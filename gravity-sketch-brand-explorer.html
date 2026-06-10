@@ -1,0 +1,2197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gravity Sketch — Brand Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:    #f5f5f5;
+    --bg2:   #ebebeb;
+    --bg3:   #e0e0e0;
+    --line:  #dadadd;
+    --text:  #1a1a1b;
+    --muted: #7b7a82;
+    --ac:    #000000;
+    --ac2:   #333333;
+    /* legacy aliases kept for canvas/main area rules */
+    --panel-bg: #ffffff;
+    --panel-border: var(--line);
+    --panel-text: var(--muted);
+    --panel-text-bright: var(--text);
+    --panel-accent: var(--ac);
+    --btn-bg: var(--bg);
+    --btn-hover: var(--bg2);
+    --btn-active: var(--ac);
+    --btn-active-text: #ffffff;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    background: #e8e8e8;
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 100vh;
+    height: 100vh;
+  }
+
+  /* ─── PANEL ─── */
+  .panel {
+    background: #ffffff;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg3) transparent;
+  }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+  .panel-logo {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .panel-logo .wordmark {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .panel-logo .subtitle {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0em;
+    text-transform: none;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .panel-body {
+    flex: 1;
+    padding: 0 0 16px;
+    overflow-y: auto;
+  }
+
+  .section {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section:last-child { border-bottom: none; }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* Button grid controls */
+  .btn-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .btn-grid.cols-2 > .ctrl-btn { flex: 1 1 calc(50% - 4px); }
+  .btn-grid.cols-3 > .ctrl-btn { flex: 1 1 calc(33% - 4px); }
+  .btn-grid.cols-4 > .ctrl-btn { flex: 1 1 calc(25% - 4px); }
+  .btn-grid.cols-5 > .ctrl-btn { flex: 1 1 calc(20% - 4px); }
+
+  .ctrl-btn {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+  }
+  .ctrl-btn:hover { background: var(--bg2); color: var(--text); }
+  .ctrl-btn.active {
+    background: var(--ac);
+    border-color: var(--ac);
+    color: #ffffff;
+  }
+
+  /* Colour swatches */
+  .swatch-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .swatch {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    transition: box-shadow 0.15s, transform 0.1s;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .swatch:hover { transform: scale(1.06); }
+  .swatch.active {
+    box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--ac), 0 1px 6px rgba(0,0,0,.18);
+  }
+  .swatch[data-bg="#FFFFFF"] { box-shadow: 0 0 0 1px var(--line); }
+  .swatch[data-bg="#FFFFFF"].active {
+    box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--ac), 0 1px 6px rgba(0,0,0,.18);
+  }
+
+  /* 3D colour swatches */
+  .s3-swatch-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .s3-swatch {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: transform .14s, box-shadow .14s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  }
+  .s3-swatch:hover { transform: scale(1.1); }
+  .s3-swatch.active { box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--ac), 0 1px 6px rgba(0,0,0,.18); }
+
+  /* Ticker section */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .toggle-label { font-size: 11px; color: var(--text); }
+  .toggle {
+    width: 36px; height: 20px;
+    background: var(--bg3);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--ac); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: left 0.2s;
+  }
+  .toggle.on::after { left: 19px; }
+
+  /* Custom text input */
+  .custom-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 7px 10px;
+    margin-top: 6px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .custom-input:focus { border-color: var(--ac); }
+  .custom-input::placeholder { color: var(--muted); }
+
+  /* Action buttons */
+  .action-btn {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, opacity 0.15s;
+    margin-bottom: 6px;
+  }
+  .action-btn:last-child { margin-bottom: 0; }
+  .action-btn.primary { background: var(--ac); color: #fff; }
+  .action-btn.primary:hover { background: var(--ac2); }
+  .action-btn.secondary { background: var(--bg); border: 1px solid var(--line); color: var(--text); }
+  .action-btn.secondary:hover { background: var(--bg2); }
+  .action-btn.danger { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+  .action-btn.danger:hover { border-color: #c0392b; color: #c0392b; }
+
+  /* ─── MAIN ─── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: visible;
+  }
+
+  .canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #e8e8e8;
+    overflow: visible; /* allow 3D elements to bleed past canvas frame */
+    position: relative;
+  }
+
+  .canvas-outer {
+    width: 100%;
+    max-width: calc((100vh - 48px) * 16/9);
+    aspect-ratio: 16/9;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06);
+    overflow: visible; /* allow 3D element to bleed past frame edges */
+    border-radius: 3px;
+  }
+
+  /* ─── CANVAS INNER ─── */
+  #canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transition: background-color 0.3s;
+    overflow: visible; /* 3D canvas can extend beyond — frame is defined by bg colour */
+    border-radius: 3px; /* keep rounded corners on the coloured frame */
+  }
+
+  /* 3D stroke canvas */
+  #stroke3d {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+    background: transparent;
+    z-index: 8; /* behind #text-block (z-index:10) by default */
+  }
+  /* Overlay canvas — clipped copy that sits in front of text (z 12) */
+  #stroke3d-overlay {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+    background: transparent;
+    z-index: 12;
+  }
+  /* When 3D script is active, allow the oversized canvas to bleed to frame edges */
+  #canvas.bleed-3d {
+    overflow: visible;
+  }
+
+  /* Typography */
+  #text-block {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    max-width: 58%;
+    pointer-events: none;
+    transition: top 0.3s, left 0.3s, bottom 0.3s, transform 0.3s;
+  }
+  #headline {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 900;
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    transition: color 0.2s, font-size 0.2s;
+  }
+  #body-text {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 400;
+    line-height: 1.45;
+    max-width: 36ch;
+    transition: color 0.2s;
+  }
+  #body-text.hidden { display: none; }
+
+  /* Logo */
+  #logo-wrap {
+    position: absolute;
+    top: 24px;
+    left: 28px;
+    z-index: 15;
+    pointer-events: none;
+  }
+  #logo-img {
+    display: block;
+    height: 32px;
+    width: auto;
+  }
+
+  /* Ticker */
+  #ticker {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    z-index: 20;
+    pointer-events: none;
+  }
+  #ticker.hidden { display: none; }
+
+  .ticker-track {
+    display: flex;
+    white-space: nowrap;
+    animation: ticker-scroll 90s linear infinite;
+    will-change: transform;
+  }
+  @keyframes ticker-scroll {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+  }
+  .ticker-item {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0 18px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* ─── SAVED COMBINATIONS ─── */
+  .saved-panel {
+    background: #f4f4f4;
+    border-top: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .saved-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #ececec;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .saved-header-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #444;
+  }
+  .saved-list {
+    padding: 0;
+  }
+  .saved-item {
+    padding: 8px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 10px;
+    color: #555;
+    line-height: 1.6;
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 8px;
+    align-items: start;
+  }
+  .saved-item:last-child { border-bottom: none; }
+  .saved-num { font-weight: 700; color: #6B47DC; }
+  .saved-details { color: #333; }
+  .saved-time { font-size: 9px; color: #aaa; white-space: nowrap; margin-top: 2px; }
+  .saved-empty { padding: 16px; text-align: center; font-size: 11px; color: #aaa; font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══════════════════════════ CONTROLS PANEL ══════════════════════════ -->
+  <aside class="panel">
+    <div class="panel-logo">
+      <div class="wordmark">Gravity Sketch</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
+        <div class="subtitle">Brand Explorer</div>
+        <a href="http://localhost:9090/gravity-sketch-3d-generator.html"
+           style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+                  color:var(--muted);text-decoration:none;border:1px solid var(--line);
+                  border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
+           onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+          3D Generator →
+        </a>
+      </div>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- Format -->
+      <div class="section">
+        <div class="section-label">Format</div>
+        <div class="btn-grid cols-3">
+          <button class="ctrl-btn active" data-group="format" data-val="landscape-16-9" onclick="setVal(this)">16:9</button>
+          <button class="ctrl-btn" data-group="format" data-val="landscape-4-3" onclick="setVal(this)">4:3</button>
+          <button class="ctrl-btn" data-group="format" data-val="portrait" onclick="setVal(this)">Portrait</button>
+        </div>
+      </div>
+
+      <!-- Logo -->
+      <div class="section">
+        <div class="section-label" style="display:flex;align-items:center;justify-content:space-between">
+          Logo
+          <button id="logo-visible-toggle" class="ctrl-btn active" onclick="toggleLogoVisible()" style="font-size:10px;padding:2px 10px;flex:0 0 auto">On</button>
+        </div>
+        <div id="sec-logo-controls">
+          <div class="btn-grid cols-4" style="margin-bottom:6px">
+            <button class="ctrl-btn active" data-group="logo-type" data-val="combination" onclick="setVal(this)">Combo</button>
+            <button class="ctrl-btn" data-group="logo-type" data-val="logotype" onclick="setVal(this)">Type</button>
+            <button class="ctrl-btn" data-group="logo-type" data-val="logotype-stacked" onclick="setVal(this)">Stacked</button>
+            <button class="ctrl-btn" data-group="logo-type" data-val="logomark" onclick="setVal(this)">Mark</button>
+          </div>
+          <div class="btn-grid cols-3">
+            <button class="ctrl-btn active" data-group="logo-ver" data-val="colour" onclick="setVal(this)">Colour</button>
+            <button class="ctrl-btn" data-group="logo-ver" data-val="white" onclick="setVal(this)">White</button>
+            <button class="ctrl-btn" data-group="logo-ver" data-val="black" onclick="setVal(this)">Black</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Background -->
+      <div class="section">
+        <div class="section-label">Background</div>
+        <div class="swatch-grid">
+          <div class="swatch active" data-bg="#FFC72C" style="background:#FFC72C" title="Yellow" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#6B47DC" style="background:#6B47DC" title="Purple" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#92F5B5" style="background:#92F5B5" title="Mint" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#FFFFFF" style="background:#FFFFFF" title="White" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#000000" style="background:#000000" title="Black" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#F2F2F2" style="background:#F2F2F2" title="Light grey" onclick="setBg(this)"></div>
+        </div>
+      </div>
+
+      <!-- Stroke Source: SVG ribbon removed, always 3D Live -->
+      <div class="section" id="sec-stroke-source" style="display:none"></div>
+
+      <!-- 3D Style — visible only in 3D mode -->
+      <div class="section" id="sec-3d-style" style="display:block">
+        <div class="section-label">3D Style</div>
+        <div class="btn-grid cols-3">
+          <button class="ctrl-btn active" data-group="3d-style" data-val="organic" onclick="setVal(this)">Organic</button>
+          <button class="ctrl-btn" data-group="3d-style" data-val="flowing" onclick="setVal(this)">Flowing</button>
+          <button class="ctrl-btn" data-group="3d-style" data-val="script" onclick="setVal(this)">Script</button>
+        </div>
+        <input class="custom-input" id="s3-text-input" type="text" value="Gravity Sketch" placeholder="Type here…" oninput="s3setText(this.value)" style="display:none; margin-top:8px">
+      </div>
+
+      <!-- 3D Colour — visible only in 3D mode -->
+      <div class="section" id="sec-3d-color" style="display:block">
+        <div class="section-label">3D Colour</div>
+        <div class="s3-swatch-row" id="s3-swatches">
+          <div class="s3-swatch active" data-s3color="green"  style="background:radial-gradient(ellipse at 40% 38%,#92F5B5 0%,#92F5B5 44%,#4da870 72%,#1a4028 100%)" onclick="s3pickColor(this,'green')"></div>
+          <div class="s3-swatch"        data-s3color="gold"   style="background:radial-gradient(ellipse at 40% 38%,#FFBC3A 0%,#FFBC3A 44%,#cc8800 72%,#523300 100%)" onclick="s3pickColor(this,'gold')"></div>
+          <div class="s3-swatch"        data-s3color="pink"   style="background:radial-gradient(ellipse at 40% 38%,#FA5050 0%,#FA5050 44%,#c01010 72%,#400000 100%)" onclick="s3pickColor(this,'pink')"></div>
+          <div class="s3-swatch"        data-s3color="purple" style="background:radial-gradient(ellipse at 40% 38%,#6530F7 0%,#6530F7 44%,#3a0fb8 72%,#10043a 100%)" onclick="s3pickColor(this,'purple')"></div>
+          <div class="s3-swatch"        data-s3color="white"  style="background:radial-gradient(ellipse at 40% 38%,#f0f0f0 0%,#f0f0f0 44%,#aaa 72%,#555 100%)" onclick="s3pickColor(this,'white')"></div>
+        </div>
+      </div>
+
+      <!-- 3D Position -->
+      <div class="section" id="sec-stroke-pos">
+        <div class="section-label">3D Position</div>
+        <div class="btn-grid cols-2">
+          <button class="ctrl-btn" data-group="pos" data-val="top-left" onclick="setVal(this)">Top left</button>
+          <button class="ctrl-btn" data-group="pos" data-val="top-right" onclick="setVal(this)">Top right</button>
+          <button class="ctrl-btn active" data-group="pos" data-val="centre" onclick="setVal(this)">Centre</button>
+          <button class="ctrl-btn" data-group="pos" data-val="bottom-left" onclick="setVal(this)">Bottom left</button>
+          <button class="ctrl-btn" data-group="pos" data-val="bottom-right" onclick="setVal(this)">Bottom right</button>
+          <button class="ctrl-btn" data-group="pos" data-val="edge-left" onclick="setVal(this)">Edge left</button>
+          <button class="ctrl-btn" data-group="pos" data-val="edge-right" onclick="setVal(this)">Edge right</button>
+          <button class="ctrl-btn" data-group="pos" data-val="corner-crop" onclick="setVal(this)">Corner crop</button>
+        </div>
+      </div>
+
+      <!-- 3D Scale -->
+      <div class="section" id="sec-stroke-scale">
+        <div class="section-label">3D Scale</div>
+        <div class="btn-grid cols-4">
+          <button class="ctrl-btn" data-group="scale" data-val="small" onclick="setVal(this)">Small</button>
+          <button class="ctrl-btn active" data-group="scale" data-val="medium" onclick="setVal(this)">Med</button>
+          <button class="ctrl-btn" data-group="scale" data-val="large" onclick="setVal(this)">Large</button>
+          <button class="ctrl-btn" data-group="scale" data-val="oversized" onclick="setVal(this)">XL</button>
+        </div>
+      </div>
+
+      <!-- Title Style -->
+      <div class="section">
+        <div class="section-label">Title Style</div>
+        <div class="btn-grid cols-2">
+          <button class="ctrl-btn active" data-group="title-mode" data-val="flat" onclick="setVal(this)">Flat Type</button>
+          <button class="ctrl-btn" data-group="title-mode" data-val="3d-script" onclick="setVal(this)">3D Script</button>
+        </div>
+      </div>
+
+      <!-- 3D Layer -->
+      <div class="section">
+        <div class="section-label">3D Layer</div>
+        <div class="btn-grid cols-3">
+          <button class="ctrl-btn" data-group="stroke-layer" data-val="behind" onclick="setVal(this)">Behind</button>
+          <button class="ctrl-btn active" data-group="stroke-layer" data-val="through" onclick="setVal(this)">Through</button>
+          <button class="ctrl-btn" data-group="stroke-layer" data-val="front" onclick="setVal(this)">In front</button>
+        </div>
+      </div>
+
+      <!-- Type Content -->
+      <div class="section">
+        <div class="section-label">Title</div>
+        <input class="custom-input" id="custom-text" type="text" placeholder="Title text…" oninput="onCustomInput()">
+      </div>
+
+      <!-- Type Size -->
+      <div class="section">
+        <div class="section-label">Title Size</div>
+        <div class="btn-grid cols-4">
+          <button class="ctrl-btn" data-group="type-size" data-val="small" onclick="setVal(this)">Sm</button>
+          <button class="ctrl-btn active" data-group="type-size" data-val="medium" onclick="setVal(this)">Md</button>
+          <button class="ctrl-btn" data-group="type-size" data-val="large" onclick="setVal(this)">Lg</button>
+          <button class="ctrl-btn" data-group="type-size" data-val="hero" onclick="setVal(this)">Hero</button>
+        </div>
+      </div>
+
+      <!-- Type Position -->
+      <div class="section">
+        <div class="section-label">Title Position</div>
+        <div class="btn-grid cols-2">
+          <button class="ctrl-btn active" data-group="type-pos" data-val="top-left" onclick="setVal(this)">Top left</button>
+          <button class="ctrl-btn" data-group="type-pos" data-val="centre-left" onclick="setVal(this)">Centre left</button>
+          <button class="ctrl-btn" data-group="type-pos" data-val="centre" onclick="setVal(this)">Centre</button>
+          <button class="ctrl-btn" data-group="type-pos" data-val="bottom-left" onclick="setVal(this)">Bottom left</button>
+        </div>
+      </div>
+
+      <!-- Type Colour -->
+      <div class="section">
+        <div class="section-label">Title Colour</div>
+        <div class="btn-grid cols-4">
+          <button class="ctrl-btn active" data-group="type-color" data-val="#000000" onclick="setVal(this)" style="color:#fff">Black</button>
+          <button class="ctrl-btn" data-group="type-color" data-val="#FFFFFF" onclick="setVal(this)">White</button>
+          <button class="ctrl-btn" data-group="type-color" data-val="#6B47DC" onclick="setVal(this)">Purple</button>
+          <button class="ctrl-btn" data-group="type-color" data-val="#FFC72C" onclick="setVal(this)">Yellow</button>
+        </div>
+      </div>
+
+      <!-- Body Text -->
+      <div class="section">
+        <div class="toggle-row">
+          <span class="toggle-label">Body text</span>
+          <button class="toggle" id="body-toggle" onclick="toggleBody()"></button>
+        </div>
+        <div id="sec-body-content" style="display:none">
+          <input class="custom-input" id="body-text-input" type="text" placeholder="Body text…" oninput="onBodyInput()">
+        </div>
+      </div>
+
+      <!-- Ticker -->
+      <div class="section">
+        <div class="toggle-row">
+          <span class="toggle-label">Ticker bar</span>
+          <button class="toggle on" id="ticker-toggle" onclick="toggleTicker()"></button>
+        </div>
+        <div class="section-label" style="margin-top:6px">Theme</div>
+        <div class="btn-grid cols-3" style="margin-bottom:8px">
+          <button class="ctrl-btn active" data-group="ticker-theme" data-val="match" onclick="setVal(this)">Match BG</button>
+          <button class="ctrl-btn" data-group="ticker-theme" data-val="contrast" onclick="setVal(this)">Contrast</button>
+          <button class="ctrl-btn" data-group="ticker-theme" data-val="accent" onclick="setVal(this)">Accent</button>
+        </div>
+        <input class="custom-input" id="ticker-text-input" type="text" value="In The Making >>> " placeholder="Ticker text…" oninput="onTickerInput()" style="margin-top:0">
+      </div>
+
+      <!-- Actions -->
+      <div class="section">
+        <button class="action-btn primary" onclick="randomise()">&#x2684; Randomise</button>
+        <button class="action-btn secondary" onclick="saveCombination()">&#x2713; Save combination</button>
+        <button class="action-btn danger" onclick="clearSaved()">&#x2715; Clear saved</button>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════ CANVAS + SAVED ══════════════════════════ -->
+  <main class="main">
+    <div class="canvas-wrap">
+      <div class="canvas-outer">
+        <div id="canvas">
+
+          <!-- Logo -->
+          <div id="logo-wrap">
+            <img id="logo-img" src="" alt="Gravity Sketch">
+          </div>
+
+          <!-- 3D Live stroke canvas (behind text) -->
+          <canvas id="stroke3d"></canvas>
+          <!-- 3D overlay: clipped copy that sits in front of text for spatial depth -->
+          <canvas id="stroke3d-overlay"></canvas>
+
+          <!-- Text block: headline + body flow together -->
+          <div id="text-block">
+            <div id="headline">In the<br>making</div>
+            <div id="body-text" class="hidden">An immersive 3D workspace built for ideation and collaborative problem-solving</div>
+          </div>
+
+          <!-- Ticker -->
+          <div id="ticker">
+            <div class="ticker-track" id="ticker-track">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div><!-- /canvas -->
+      </div>
+    </div>
+
+    <!-- Saved combinations -->
+    <div class="saved-panel" id="saved-panel">
+      <div class="saved-header">
+        <span class="saved-header-title">Saved Combinations</span>
+      </div>
+      <div class="saved-list" id="saved-list">
+        <div class="saved-empty" id="saved-empty">No combinations saved yet. Hit "Save combination" to log one.</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+'use strict';
+
+// ─── BRAND EXPLORER STATE ─────────────────────────────────────────────────────
+const state = {
+  bg: '#FFC72C',
+  format: 'landscape-16-9',
+  logoVisible: true,
+  logoVersion: 'colour',
+  logoType: 'combination',  // 'combination' | 'logotype' | 'logotype-stacked' | 'logomark'
+  strokeMode: '3d',        // always 3d
+  titleMode: 'flat',       // 'flat' | '3d-script'
+  strokeLayer: 'through',  // 'behind' | 'through' | 'front' — z-order relative to 2D text
+  pos: 'centre',
+  scale: 'medium',
+  copy: 'in-the-making',
+  customText: '',
+  typeSize: 'medium',
+  typePos: 'top-left',
+  typeColor: '#000000',
+  bodyVisible: false,
+  bodyText: 'An immersive 3D workspace built for ideation and collaborative problem-solving',
+  ticker: true,
+  tickerTheme: 'match',
+  tickerText: 'In The Making >>> ',
+};
+
+const saved = [];
+let savedCounter = 0;
+
+// ─── COPY GENERATOR ───────────────────────────────────────────────────────────
+// Each entry: [headline (newlines allowed), body]
+const copyPool = [
+  ['Design\nfaster', 'Move from idea to validated concept in hours, not weeks.'],
+  ['Think\nspatially', 'Explore form and proportion in a true 3D environment built for designers.'],
+  ['Build\ntogether', 'Collaborate across disciplines in shared virtual space, in real time.'],
+  ['See it\nat scale', 'Validate ergonomics and proportion at full 1:1 scale in VR.'],
+  ['Shape\nyour ideas', 'Gravity Sketch puts the full power of spatial design in your hands.'],
+  ['Make it\nreal', 'From sketch to manufacturing — design the whole product lifecycle in 3D.'],
+  ['Beyond\nthe screen', 'Step inside your designs and experience them as they were meant to be felt.'],
+  ['Design\nwithout\nlimits', 'An immersive workspace that keeps up with how designers actually think.'],
+  ['Ideate\nat speed', 'Rapidly explore concepts in 3D before a single line of CAD is drawn.'],
+  ['Feel the\nspace', 'Understand spatial relationships and design intent before you build anything.'],
+  ['Bring better\nproducts\nto life', 'Gravity Sketch helps teams design, review and align faster — in 3D.'],
+  ['Sketch\nin space', 'Draw, sculpt and annotate directly in three dimensions, as naturally as on paper.'],
+  ['One\nworkspace', 'From early ideation to final review — everything in one immersive environment.'],
+  ['Design\nconfidently', "Eliminate guesswork by exploring your design at full scale before it's built."],
+  ['Create\nboldly', 'Tools that move as fast as your imagination — no constraints, just ideas.'],
+  ['Collaborate\nanywhere', 'Your whole team, in the same virtual room, working on the same model.'],
+  ['In the\nmaking', "The future of product design is spatial — and it's being built right now."],
+  ['Solve\nfaster', 'Identify design challenges early and fix them before they become costly problems.'],
+  ['Think\nin 3D', 'Break free from flat screens and experience your design as a real object.'],
+  ['Unlock\ncreativity', 'Gravity Sketch removes the barriers between imagination and realisation.'],
+  ['Work\nsmarter', 'Cut review cycles and align stakeholders by putting them inside the design.'],
+  ['Designed\nfor makers', 'Built around the way industrial designers and product teams actually work.'],
+  ['Scale\nwith ease', 'From solo sketching to enterprise collaboration — Gravity Sketch grows with you.'],
+  ['Own\nthe space', 'Your ideas, your proportions, your decisions — made confidently in 3D.'],
+];
+
+// 1–2 word phrases safe for 3D script (no numbers, short enough to fill canvas)
+const scriptWordPool = [
+  'Create', 'Design', 'Build', 'Shape', 'Make',
+  'Ideate', 'Explore', 'Imagine', 'Sketch',
+  'Spatial', 'Together', 'Boldly',
+  'In the making', 'Think big', 'Make real',
+  'Free form', 'Build bold', 'Own it',
+  'Go deep', 'Be bold', 'Move fast',
+];
+
+function genCopy() {
+  const entry = copyPool[Math.floor(Math.random() * copyPool.length)];
+  return { title: entry[0], body: entry[1] };
+}
+
+function genScriptWord() {
+  return scriptWordPool[Math.floor(Math.random() * scriptWordPool.length)];
+}
+
+// Kept for legacy references — always returns custom text
+const copyMap = {};
+const bodyPresetMap = {};
+
+// ─── CONTROLS ─────────────────────────────────────────────────────────────────
+function setBg(el) {
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  state.bg = el.dataset.bg;
+  applyBgRules();
+  render();
+}
+
+// Enforce bg-specific rules (e.g. mint → black text + black logo)
+function applyBgRules() {
+  if (state.bg === '#92F5B5') {
+    state.typeColor   = '#000000';
+    state.logoVersion = 'black';
+    document.querySelectorAll('[data-group="type-color"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.val === '#000000'));
+    document.querySelectorAll('[data-group="logo-ver"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.val === 'black'));
+  }
+}
+
+function toggleLogoVisible() {
+  state.logoVisible = !state.logoVisible;
+  const btn = document.getElementById('logo-visible-toggle');
+  if (btn) { btn.textContent = state.logoVisible ? 'On' : 'Off'; btn.classList.toggle('active', state.logoVisible); }
+  document.getElementById('sec-logo-controls').style.display = state.logoVisible ? '' : 'none';
+  renderLogo();
+}
+
+function setVal(el) {
+  const group = el.dataset.group;
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+
+  switch(group) {
+    case 'format':
+      state.format = el.dataset.val;
+      break;
+    case 'logo-ver':
+      state.logoVersion = el.dataset.val;
+      renderLogo();
+      break;
+    case 'logo-type':
+      state.logoType = el.dataset.val;
+      renderLogo();
+      break;
+    case 'stroke-mode':
+      state.strokeMode = el.dataset.val;
+      document.getElementById('sec-3d-style').style.display = el.dataset.val === '3d' ? 'block' : 'none';
+      document.getElementById('sec-3d-color').style.display  = el.dataset.val === '3d' ? 'block' : 'none';
+      if (el.dataset.val === '3d') s3generate();
+      break;
+    case '3d-style':
+      s3setStyle(el.dataset.val);
+      break;
+    case 'title-mode':
+      state.titleMode = el.dataset.val;
+      // 3D-script locks style to 'script' (rendered in renderStroke); hide the 3D Style picker
+      document.getElementById('sec-3d-style').style.display = el.dataset.val === '3d-script' ? 'none' : 'block';
+      break;
+    case 'stroke-layer':
+      state.strokeLayer = el.dataset.val;
+      break;
+    case 'pos':          state.pos = el.dataset.val; break;
+    case 'scale':        state.scale = el.dataset.val; break;
+    case 'copy':
+      state.copy = el.dataset.val;
+      // sync the text input with the chosen preset
+      const txt = copyMap[el.dataset.val] || '';
+      document.getElementById('custom-text').value = txt.replace(/\n/g, ' / ');
+      syncTitleToS3();
+      break;
+    case 'type-size':    state.typeSize = el.dataset.val; break;
+    case 'type-pos':     state.typePos = el.dataset.val; break;
+    case 'type-color':   state.typeColor = el.dataset.val; break;
+    case 'ticker-theme': state.tickerTheme = el.dataset.val; break;
+  }
+
+  render();
+}
+
+function onCustomInput() {
+  state.customText = document.getElementById('custom-text').value;
+  state.copy = 'custom';
+  syncTitleToS3();
+  render();
+}
+
+function toggleBody() {
+  state.bodyVisible = !state.bodyVisible;
+  document.getElementById('body-toggle').classList.toggle('on', state.bodyVisible);
+  document.getElementById('sec-body-content').style.display = state.bodyVisible ? 'block' : 'none';
+  render();
+}
+
+function setBodyPreset(el) {
+  document.querySelectorAll('[data-group="body-preset"]').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  state.bodyText = bodyPresetMap[el.dataset.val] || '';
+  document.getElementById('body-text-input').value = state.bodyText;
+  render();
+}
+
+function onBodyInput() {
+  state.bodyText = document.getElementById('body-text-input').value;
+  render();
+}
+
+function onTickerInput() {
+  state.tickerText = document.getElementById('ticker-text-input').value;
+  render();
+}
+
+function syncTitleToS3() {
+  // keep 3D script title text in sync with headline
+  if (state.titleMode === '3d-script') {
+    s3State.titleText = getHeadlineText();
+    s3generate();
+  }
+}
+
+function getHeadlineText() {
+  if (state.copy === 'custom') return state.customText || 'Gravity Sketch';
+  return (copyMap[state.copy] || '').replace(/\n/g, ' ');
+}
+
+function toggleTicker() {
+  state.ticker = !state.ticker;
+  const t = document.getElementById('ticker-toggle');
+  t.classList.toggle('on', state.ticker);
+  render();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  renderFormat();
+  renderBg();
+  renderStroke();
+  renderType();
+  renderBodyText();
+  renderTicker();
+  renderLogo();
+}
+
+function renderFormat() {
+  const outer = document.querySelector('.canvas-outer');
+  switch(state.format) {
+    case 'landscape-16-9':
+      outer.style.aspectRatio = '16/9';
+      outer.style.width = '100%';
+      outer.style.height = 'auto';
+      outer.style.maxWidth = 'calc((100vh - 96px) * 16/9)';
+      outer.style.maxHeight = '';
+      break;
+    case 'landscape-4-3':
+      outer.style.aspectRatio = '4/3';
+      outer.style.width = '100%';
+      outer.style.height = 'auto';
+      outer.style.maxWidth = 'calc((100vh - 96px) * 4/3)';
+      outer.style.maxHeight = '';
+      break;
+    case 'portrait':
+      outer.style.aspectRatio = '3/4';
+      outer.style.width = 'auto';
+      outer.style.height = 'calc(100vh - 96px)';
+      outer.style.maxWidth = 'calc((100vh - 96px) * 3/4)';
+      outer.style.maxHeight = '';
+      break;
+  }
+}
+
+function renderBg() {
+  document.getElementById('canvas').style.background = state.bg;
+  // Auto-correct text colour so it never matches the background
+  autoContrastTextColor();
+}
+
+function autoContrastTextColor() {
+  const bgDark = isDark(state.bg);
+  const textDark = isDark(state.typeColor);
+  // If text and bg have same lightness, flip to a safe colour
+  if (bgDark === textDark) {
+    state.typeColor = bgDark ? '#FFFFFF' : '#000000';
+    document.querySelectorAll('[data-group="type-color"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.val === state.typeColor));
+  }
+}
+
+const LOGO_ASSETS = {
+  combination: {
+    colour: 'assets/combination-colour.svg',
+    black:  'assets/combination-colour.svg', // filter applied
+    white:  null,                             // filter applied
+  },
+  logotype: {
+    colour: 'assets/logotype-colour.svg',
+    black:  'assets/logotype-black.svg',
+    white:  'assets/logotype-white.svg',
+  },
+  'logotype-stacked': {
+    colour: 'assets/logotype-stacked-colour.svg',
+    black:  'assets/logotype-stacked-black.svg',
+    white:  'assets/logotype-stacked-white.svg',
+  },
+  logomark: {
+    colour: 'assets/logomark-colour.svg',
+    black:  'assets/logomark-black.svg',
+    white:  'assets/logomark-white.svg',
+  },
+};
+
+// Exact viewBox dimensions from the SVG files
+const LOGO_DIMS = {
+  combination:       { w: 636,  h: 209  },
+  logotype:          { w: 583,  h: 94   },
+  'logotype-stacked':{ w: 410,  h: 225  },
+  logomark:          { w: 278,  h: 278  },
+};
+
+function renderLogo() {
+  const wrap = document.getElementById('logo-wrap');
+  const img  = document.getElementById('logo-img');
+  if (!img || !wrap) return;
+  if (state.logoVisible === false) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const set = LOGO_ASSETS[state.logoType] || LOGO_ASSETS.combination;
+  img.style.filter = 'none';
+  if (state.logoVersion === 'white') {
+    if (set.white) {
+      img.src = set.white;
+    } else {
+      img.src = set.colour;
+      img.style.filter = 'brightness(0) invert(1)';
+    }
+  } else if (state.logoVersion === 'black') {
+    if (set.black !== set.colour) {
+      img.src = set.black;
+    } else {
+      img.src = set.colour;
+      img.style.filter = 'brightness(0)';
+    }
+  } else {
+    img.src = set.colour;
+  }
+  // Set explicit pixel dimensions so SVGs with width/height="100%" render correctly
+  const targetH = 32;
+  const d = LOGO_DIMS[state.logoType] || LOGO_DIMS.combination;
+  img.style.height = targetH + 'px';
+  img.style.width  = Math.round(targetH * d.w / d.h) + 'px';
+}
+
+function isDark(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return (r*0.299 + g*0.587 + b*0.114) < 128;
+}
+
+const scaleMap = {
+  small:    { w: 380, h: 300 },
+  medium:   { w: 560, h: 440 },
+  large:    { w: 740, h: 580 },
+  oversized:{ w: 980, h: 760 },
+};
+
+function strokePosition(pos, w, h) {
+  const cw = document.getElementById('canvas').offsetWidth  || 800;
+  const ch = document.getElementById('canvas').offsetHeight || 450;
+
+  const styles = {
+    position: 'absolute',
+    width: w+'px',
+    height: h+'px',
+    top: 'auto', left: 'auto', right: 'auto', bottom: 'auto',
+    transform: 'none',
+  };
+
+  switch(pos) {
+    case 'top-left':
+      styles.top = (-h*0.25)+'px'; styles.left = (-w*0.2)+'px'; break;
+    case 'top-right':
+      styles.top = (-h*0.25)+'px'; styles.right = (-w*0.2)+'px'; break;
+    case 'centre':
+      styles.top = '50%'; styles.left = '50%';
+      styles.transform = 'translate(-50%, -50%)'; break;
+    case 'bottom-left':
+      styles.bottom = (-h*0.25)+'px'; styles.left = (-w*0.2)+'px'; break;
+    case 'bottom-right':
+      styles.bottom = (-h*0.25)+'px'; styles.right = (-w*0.2)+'px'; break;
+    case 'edge-left':
+      styles.top = '50%'; styles.left = (-w*0.55)+'px';
+      styles.transform = 'translateY(-50%)'; break;
+    case 'edge-right':
+      styles.top = '50%'; styles.right = (-w*0.55)+'px';
+      styles.transform = 'translateY(-50%)'; break;
+    case 'corner-crop':
+      styles.bottom = (-h*0.45)+'px'; styles.right = (-w*0.45)+'px'; break;
+  }
+  return styles;
+}
+
+function applyPositionStyles(el, pos) {
+  el.style.width     = pos.width;
+  el.style.height    = pos.height;
+  el.style.position  = 'absolute';
+  el.style.top       = pos.top;
+  el.style.left      = pos.left;
+  el.style.right     = pos.right;
+  el.style.bottom    = pos.bottom;
+  el.style.transform = pos.transform;
+}
+
+function renderStroke() {
+  const c3d     = document.getElementById('stroke3d');
+  const overlay = document.getElementById('stroke3d-overlay');
+  const canvasEl = document.getElementById('canvas');
+
+  // When 3D-script title mode, lock style to 'script' and sync headline text
+  if (state.titleMode === '3d-script') {
+    s3State.style = 'script';
+    s3State.titleText = getHeadlineText();
+    document.querySelectorAll('[data-group="3d-style"]').forEach(b =>
+      b.classList.toggle('active', b.dataset.val === 'script'));
+  }
+
+  c3d.style.display = 'block';
+
+  // Z-layer handling
+  if (state.strokeLayer === 'front') {
+    // Entirely in front of text — main canvas at z 12, no overlay needed
+    c3d.style.zIndex = '12';
+    if (overlay) overlay.style.display = 'none';
+  } else if (state.strokeLayer === 'through') {
+    // Split: main canvas behind text (z 8), overlay canvas in front (z 12, clipped)
+    c3d.style.zIndex = '8';
+    // Overlay is updated each frame in s3compositeOverlay()
+    if (overlay) overlay.style.display = 'block';
+  } else {
+    // 'behind' — entirely behind text
+    c3d.style.zIndex = '8';
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  if (state.titleMode === '3d-script' || s3State.style === 'flowing') {
+    // Full canvas — 3D script spans the whole frame; flowing also fills it
+    canvasEl.classList.remove('bleed-3d');
+    c3d.style.top = '0'; c3d.style.left = '0';
+    c3d.style.right = '0'; c3d.style.bottom = '0';
+    c3d.style.width = '100%'; c3d.style.height = '100%';
+    c3d.style.transform = 'none';
+  } else {
+    // Organic / standalone script: pos + scale controls
+    canvasEl.classList.remove('bleed-3d');
+    const { w, h } = scaleMap[state.scale];
+    const pos = strokePosition(state.pos, w, h);
+    applyPositionStyles(c3d, pos);
+  }
+  // Sync overlay geometry for 'through' mode
+  if (overlay && state.strokeLayer === 'through') {
+    ['top','left','right','bottom','width','height','transform'].forEach(p =>
+      overlay.style[p] = c3d.style[p]);
+  }
+  s3resize();
+  if (s3gl) s3generate();
+}
+
+const typeSizeMap = { small:'6%', medium:'9%', large:'13%', hero:'19%' };
+
+function applyTypePos(pos) {
+  const tb = document.getElementById('text-block');
+  tb.style.top = 'auto'; tb.style.left = 'auto';
+  tb.style.right = 'auto'; tb.style.bottom = 'auto';
+  tb.style.transform = 'none';
+  const isCenter = pos === 'centre';
+  tb.style.textAlign = isCenter ? 'center' : 'left';
+  tb.style.alignItems = isCenter ? 'center' : 'flex-start';
+  const pad = '7%';
+  switch(pos) {
+    case 'top-left':
+      tb.style.top = '22%'; tb.style.left = pad; break;
+    case 'centre-left':
+      tb.style.top = '50%'; tb.style.left = pad;
+      tb.style.transform = 'translateY(-50%)'; break;
+    case 'centre':
+      tb.style.top = '50%'; tb.style.left = '50%';
+      tb.style.transform = 'translate(-50%, -50%)'; break;
+    case 'bottom-left':
+      tb.style.bottom = '12%'; tb.style.left = pad; break;
+  }
+}
+
+function renderType() {
+  const el   = document.getElementById('headline');
+  const tb   = document.getElementById('text-block');
+  const canvasEl = document.getElementById('canvas');
+  const cw = canvasEl.offsetWidth || 800;
+  const ch = canvasEl.offsetHeight || 450;
+  const pct = parseFloat(typeSizeMap[state.typeSize]) / 100;
+  const lines = (state.customText || 'In the\nmaking').split('\n').length;
+  const heightCap = ch * 0.55 / Math.max(lines, 1); // leave room for body + padding
+
+  const rawText = state.customText || 'In the\nmaking';
+
+  // Always show flat text — 3D element is a separate layer, not a text replacement
+  tb.style.display = 'flex';
+  el.style.fontSize = Math.min(cw * pct, heightCap) + 'px';
+  el.style.color = state.typeColor;
+  el.innerHTML = rawText.split('\n').join('<br>');
+  applyTypePos(state.typePos);
+}
+
+function renderBodyText() {
+  const el = document.getElementById('body-text');
+  const canvasEl = document.getElementById('canvas');
+  const cw = canvasEl.offsetWidth || 800;
+
+  if (!state.bodyVisible) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.textContent = state.bodyText;
+  el.style.color = state.typeColor;
+  el.style.fontSize = Math.round(cw * 0.024) + 'px';
+  // Position is inherited from #text-block — no separate positioning needed
+}
+
+function renderTicker() {
+  const ticker = document.getElementById('ticker');
+  const track  = document.getElementById('ticker-track');
+  ticker.classList.toggle('hidden', !state.ticker);
+  if (!state.ticker) return;
+
+  let bg, fg;
+  switch(state.tickerTheme) {
+    case 'match':
+      bg = state.bg;
+      fg = isDark(state.bg) ? '#ffffff' : '#000000';
+      ticker.style.borderTop = `1px solid ${isDark(state.bg) ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`;
+      break;
+    case 'contrast':
+      bg = isDark(state.bg) ? '#ffffff' : '#000000';
+      fg = isDark(state.bg) ? '#000000' : '#ffffff';
+      ticker.style.borderTop = 'none'; break;
+    case 'accent':
+      bg = '#6B47DC'; fg = '#ffffff';
+      ticker.style.borderTop = 'none'; break;
+  }
+  ticker.style.background = bg;
+
+  const tickerPhrase = state.tickerText || 'In The Making >>> ';
+  let html = '';
+  for (let i = 0; i < 24; i++)
+    html += `<span class="ticker-item" style="color:${fg}">${tickerPhrase.toUpperCase()}</span>`;
+  track.innerHTML = html;
+}
+
+// ─── RANDOMISE ────────────────────────────────────────────────────────────────
+function randomise() {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const syncGroup = (group, val) => document.querySelectorAll(`[data-group="${group}"]`).forEach(b => b.classList.toggle('active', b.dataset.val === val));
+
+  const bgs      = ['#FFC72C','#6B47DC','#92F5B5','#FFFFFF','#000000','#F2F2F2'];
+  const tsizes   = ['small','medium','large','hero'];
+  const tposes   = ['top-left','centre-left','centre','bottom-left'];
+  const tcolors  = ['#000000','#FFFFFF','#6B47DC','#FFC72C'];
+  const tthemes  = ['match','contrast','accent'];
+  const s3styles = ['organic','flowing'];
+  const s3colors = ['green','gold','pink','purple','white'];
+  const tickerPhrases = ['In the making >>> ', 'Bring better products to life >>> ', 'Think in 3D >>> ', 'Ideate at speed >>> ', 'Immersive 3D workspace >>> ', 'Collaborate in 3D >>> '];
+
+  const logoTypes = ['combination','combination','combination','logotype','logotype-stacked','logomark']; // weight combos higher
+  const logoVers  = ['colour','colour','black','white'];
+
+  state.bg          = pick(bgs);
+  state.logoVisible = Math.random() > 0.15; // 85% show logo
+  state.logoType    = pick(logoTypes);
+  state.logoVersion = pick(logoVers);
+  state.typeSize    = pick(tsizes);
+  state.typePos     = pick(tposes);
+  state.typeColor   = pick(tcolors);
+  applyBgRules(); // enforce per-bg rules (e.g. mint → black text/logo)
+  state.ticker      = Math.random() > 0.3;
+  state.tickerTheme = pick(tthemes);
+  state.tickerText  = pick(tickerPhrases);
+  state.bodyVisible = Math.random() > 0.55;
+
+  // Sync UI
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.bg === state.bg));
+  // Logo visibility
+  const lvBtn = document.getElementById('logo-visible-toggle');
+  if (lvBtn) { lvBtn.textContent = state.logoVisible ? 'On' : 'Off'; lvBtn.classList.toggle('active', state.logoVisible); }
+  document.getElementById('sec-logo-controls').style.display = state.logoVisible ? '' : 'none';
+  syncGroup('logo-type', state.logoType);
+  syncGroup('logo-ver',  state.logoVersion);
+  ['type-size','type-pos','type-color','ticker-theme'].forEach(group => {
+    const key = { 'type-size':'typeSize','type-pos':'typePos','type-color':'typeColor','ticker-theme':'tickerTheme' }[group];
+    syncGroup(group, state[key]);
+  });
+  document.getElementById('ticker-toggle').classList.toggle('on', state.ticker);
+  document.getElementById('ticker-text-input').value = state.tickerText;
+  document.getElementById('body-toggle').classList.toggle('on', state.bodyVisible);
+  document.getElementById('sec-body-content').style.display = state.bodyVisible ? 'block' : 'none';
+
+  // 3D layer — weight 'through' (spatial) most heavily
+  state.strokeLayer = pick(['behind','behind','front']);
+  syncGroup('stroke-layer', state.strokeLayer);
+
+  // Generate copy
+  state.copy = 'custom';
+  if (Math.random() < 0.25 && s3Hershey) {
+    // 25% → 3D script title alongside flat text
+    state.titleMode = '3d-script';
+    state.strokeMode = '3d';
+    const { title, body } = genCopy();
+    state.customText = title;
+    state.bodyText   = body;
+    document.getElementById('custom-text').value     = title.replace(/\n/g, ' / ');
+    document.getElementById('body-text-input').value = body;
+    const nc = pick(s3colors);
+    s3setColorByName(nc);
+    document.querySelectorAll('.s3-swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.s3color === nc));
+    document.getElementById('sec-stroke-source').style.display = 'none';
+    document.getElementById('sec-stroke-pos').style.display    = 'block';
+    document.getElementById('sec-stroke-scale').style.display  = 'block';
+    document.getElementById('sec-3d-style').style.display = 'none'; // locked to script
+    document.getElementById('sec-3d-color').style.display = 'block';
+  } else {
+    // 75% → flat title + always a 3D stroke
+    state.titleMode = 'flat';
+    state.strokeMode = '3d';
+    const { title, body } = genCopy();
+    state.customText = title;
+    state.bodyText   = body;
+    document.getElementById('custom-text').value    = title.replace(/\n/g, ' / ');
+    document.getElementById('body-text-input').value = body;
+    const ns = pick(s3styles), nc = pick(s3colors);
+    s3setStyle(ns);
+    s3setColorByName(nc);
+    document.getElementById('sec-stroke-source').style.display = 'none';
+    document.getElementById('sec-stroke-pos').style.display    = 'block';
+    document.getElementById('sec-stroke-scale').style.display  = 'block';
+    document.getElementById('sec-3d-style').style.display = 'block';
+    document.getElementById('sec-3d-color').style.display = 'block';
+    document.querySelectorAll('[data-group="3d-style"]').forEach(b => b.classList.toggle('active', b.dataset.val === ns));
+    document.querySelectorAll('.s3-swatch').forEach(sw => sw.classList.toggle('active', sw.dataset.s3color === nc));
+  }
+  syncGroup('stroke-mode', state.strokeMode);
+  syncGroup('title-mode', state.titleMode);
+
+  render();
+}
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────────
+function saveCombination() {
+  savedCounter++;
+  const now = new Date();
+  const ts = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const dateStr = now.toLocaleDateString([], {month:'short', day:'numeric'});
+
+  const bgName = {'#FFC72C':'Yellow','#6B47DC':'Purple','#FFFFFF':'White','#000000':'Black','#F2F2F2':'Lt. Grey'}[state.bg] || state.bg;
+  const copyName = {'in-the-making':'In The Making','bringing-better':'Bringing Better Products','think-3d':'Think In 3D','custom':`"${state.customText || 'custom'}"`}[state.copy];
+  const tcName = {'#000000':'Black','#FFFFFF':'White','#6B47DC':'Purple','#FFC72C':'Yellow'}[state.typeColor];
+  const strokeLabel = state.strokeMode === '3d' ? `3D (${s3State.style}/${s3State.color})` : 'SVG';
+
+  const entry = {
+    num: savedCounter, ts: `${dateStr}, ${ts}`,
+    details: [
+      `BG: ${bgName}`,
+      `Stroke: ${strokeLabel} · ${state.pos} / ${state.scale}`,
+      `Type: ${copyName} — ${state.typeSize} — ${state.typePos} — ${tcName}`,
+      `Ticker: ${state.ticker ? state.tickerTheme : 'off'}`,
+    ].join(' · '),
+  };
+  saved.push(entry);
+  renderSaved();
+}
+
+function clearSaved() {
+  if (saved.length === 0) return;
+  saved.length = 0; savedCounter = 0;
+  renderSaved();
+}
+
+function renderSaved() {
+  const list  = document.getElementById('saved-list');
+  const empty = document.getElementById('saved-empty');
+  if (saved.length === 0) {
+    list.innerHTML = ''; list.appendChild(empty); empty.style.display = 'block'; return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = saved.map(s => `
+    <div class="saved-item">
+      <span class="saved-num">#${s.num}</span>
+      <span class="saved-details">${s.details}</span>
+      <span class="saved-time">${s.ts}</span>
+    </div>
+  `).join('');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { render(); if(state.strokeMode==='3d') { s3resize(); s3drawFrame(); } }, 80);
+});
+document.getElementById('saved-list').appendChild(document.getElementById('saved-empty'));
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── 3D STROKE ENGINE ─────────────────────────────────────────────────────────
+// Extracted and adapted from gravity-sketch-3d-generator.html
+// All WebGL state is scoped to s3* variables / the s3State object.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Vec3 ──────────────────────────────────────────────────────────────────────
+const vadd=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const vsub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const vscl=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const vdot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const vcrs=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const vlen=a=>Math.sqrt(vdot(a,a));
+const vnrm=a=>{const l=vlen(a);return l>1e-9?vscl(a,1/l):[0,0,0]};
+
+// ── Mat4 ─────────────────────────────────────────────────────────────────────
+function m4persp(fov,asp,n,f){
+  const t=1/Math.tan(fov/2),nf=1/(n-f);
+  return new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)*nf,-1, 0,0,2*f*n*nf,0]);
+}
+function m4look(eye,cen,up){
+  const f=vnrm(vsub(cen,eye)),s=vnrm(vcrs(f,up)),u=vcrs(s,f);
+  return new Float32Array([s[0],u[0],-f[0],0, s[1],u[1],-f[1],0, s[2],u[2],-f[2],0, -vdot(s,eye),-vdot(u,eye),vdot(f,eye),1]);
+}
+function m4mul(a,b){
+  const m=new Float32Array(16);
+  for(let c=0;c<4;c++)for(let r=0;r<4;r++)for(let k=0;k<4;k++)m[c*4+r]+=a[k*4+r]*b[c*4+k];
+  return m;
+}
+function m4id(){return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])}
+function m4rotX(a){const c=Math.cos(a),s=Math.sin(a);return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]);}
+function m4rotY(a){const c=Math.cos(a),s=Math.sin(a);return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]);}
+function m4trans(x,y,z){return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]);}
+function m3of(m){return new Float32Array([m[0],m[1],m[2],m[4],m[5],m[6],m[8],m[9],m[10]])}
+
+// ── Catmull-Rom spline ────────────────────────────────────────────────────────
+function crPt(p0,p1,p2,p3,t){
+  const t2=t*t,t3=t2*t;
+  return[0,1,2].map(i=>0.5*((2*p1[i])+(-p0[i]+p2[i])*t+(2*p0[i]-5*p1[i]+4*p2[i]-p3[i])*t2+(-p0[i]+3*p1[i]-3*p2[i]+p3[i])*t3));
+}
+function crTan(p0,p1,p2,p3,t){
+  const t2=t*t;
+  return[0,1,2].map(i=>0.5*((-p0[i]+p2[i])+(4*p0[i]-10*p1[i]+8*p2[i]-2*p3[i])*t+(-3*p0[i]+9*p1[i]-9*p2[i]+3*p3[i])*t2));
+}
+
+function buildSpline(ctrl,nSamples,closed){
+  const pts=[],tans=[],n=ctrl.length;
+  const get=i=>closed?ctrl[((i%n)+n)%n]:ctrl[Math.max(0,Math.min(n-1,i))];
+  const segs=closed?n:n-1;
+  const sps=Math.floor(nSamples/segs);
+  for(let s=0;s<segs;s++){
+    const p0=get(s-1),p1=get(s),p2=get(s+1),p3=get(s+2);
+    for(let j=0;j<sps;j++){
+      const t=j/sps; pts.push(crPt(p0,p1,p2,p3,t)); tans.push(vnrm(crTan(p0,p1,p2,p3,t)));
+    }
+  }
+  if(closed){pts.push(pts[0]);tans.push(tans[0]);}
+  return{pts,tans};
+}
+
+function buildFrames(pts,tans){
+  const n=pts.length,frames=[];
+  const t0=tans[0];
+  let ref=Math.abs(t0[0])<0.9?[1,0,0]:[0,1,0];
+  let n0=vnrm(vcrs(t0,ref)); n0=vnrm(vcrs(vcrs(t0,n0),t0));
+  frames[0]={t:t0,n:n0,b:vnrm(vcrs(t0,n0))};
+  for(let i=1;i<n;i++){
+    const prev=frames[i-1];
+    const v1=vsub(pts[i],pts[i-1]);
+    const c1=vdot(v1,v1);
+    let rL,tL;
+    if(c1<1e-12){rL=prev.n;tL=prev.t;}
+    else{rL=vsub(prev.n,vscl(v1,2/c1*vdot(v1,prev.n)));tL=vsub(prev.t,vscl(v1,2/c1*vdot(v1,prev.t)));}
+    const ti=tans[i],v2=vsub(ti,tL),c2=vdot(v2,v2);
+    const ni=c2<1e-12?rL:vsub(rL,vscl(v2,2/c2*vdot(v2,rL)));
+    const bi=vnrm(vcrs(ti,ni));
+    frames[i]={t:ti,n:vnrm(ni),b:bi};
+  }
+  return frames;
+}
+
+function buildTube(pts,frames,radius,sides){
+  const N=pts.length,K=sides;
+  const pos=new Float32Array(N*K*3),nor=new Float32Array(N*K*3),uv=new Float32Array(N*K*2);
+  const idx=[];
+  for(let i=0;i<N;i++){
+    const P=pts[i],{n,b}=frames[i];
+    const u=i/(N-1);
+    for(let j=0;j<K;j++){
+      const th=(j/K)*Math.PI*2,cos=Math.cos(th),sin=Math.sin(th);
+      const nx=cos*n[0]+sin*b[0],ny=cos*n[1]+sin*b[1],nz=cos*n[2]+sin*b[2];
+      const base=(i*K+j)*3;
+      pos[base]=P[0]+radius*nx; pos[base+1]=P[1]+radius*ny; pos[base+2]=P[2]+radius*nz;
+      nor[base]=nx; nor[base+1]=ny; nor[base+2]=nz;
+      const uv2=(i*K+j)*2; uv[uv2]=u; uv[uv2+1]=j/K;
+    }
+  }
+  for(let i=0;i<N-1;i++){
+    for(let j=0;j<K;j++){
+      const a=i*K+j,b2=i*K+(j+1)%K,c=((i+1)*K+j),d=((i+1)*K+(j+1)%K);
+      idx.push(a,c,b2, b2,c,d);
+    }
+  }
+  return{pos,nor,uv,idx:new Uint16Array(idx)};
+}
+
+function buildSphere(cx,cy,cz,r,slices,stacks){
+  const v=(stacks+1)*(slices+1);
+  const pos=new Float32Array(v*3),nor=new Float32Array(v*3),uv=new Float32Array(v*2);
+  const idx=[];
+  for(let i=0;i<=stacks;i++){
+    const phi=Math.PI*i/stacks,sp=Math.sin(phi),cp=Math.cos(phi);
+    for(let j=0;j<=slices;j++){
+      const th=2*Math.PI*j/slices,st=Math.sin(th),ct=Math.cos(th);
+      const x=ct*sp,y=cp,z=st*sp;
+      const vi=i*(slices+1)+j;
+      pos[vi*3]=cx+r*x; pos[vi*3+1]=cy+r*y; pos[vi*3+2]=cz+r*z;
+      nor[vi*3]=x; nor[vi*3+1]=y; nor[vi*3+2]=z;
+      uv[vi*2]=j/slices; uv[vi*2+1]=i/stacks;
+    }
+  }
+  for(let i=0;i<stacks;i++)
+    for(let j=0;j<slices;j++){
+      const a=i*(slices+1)+j,b=a+slices+1;
+      idx.push(a,b,a+1, a+1,b,b+1);
+    }
+  return{pos,nor,uv,idx:new Uint32Array(idx)};
+}
+
+function buildCapGeo(pts,frames,radius,sides){
+  const N=pts.length,bands=6;
+  const vPC=bands*sides+1;
+  const pos=new Float32Array(vPC*2*3),nor=new Float32Array(vPC*2*3),uv=new Float32Array(vPC*2*2);
+  const idx=[];
+  function addHemi(capOff,ptIdx,dir){
+    const P=pts[ptIdx],{t,n,b}=frames[ptIdx];
+    const dx=t[0]*dir,dy=t[1]*dir,dz=t[2]*dir;
+    for(let band=0;band<bands;band++){
+      const phi=(Math.PI/2)*band/bands,cosP=Math.cos(phi),sinP=Math.sin(phi);
+      for(let j=0;j<sides;j++){
+        const th=(j/sides)*Math.PI*2,cosT=Math.cos(th),sinT=Math.sin(th);
+        const ox=cosT*n[0]+sinT*b[0],oy=cosT*n[1]+sinT*b[1],oz=cosT*n[2]+sinT*b[2];
+        const vi=capOff+band*sides+j;
+        pos[vi*3]=P[0]+radius*(cosP*ox+sinP*dx);
+        pos[vi*3+1]=P[1]+radius*(cosP*oy+sinP*dy);
+        pos[vi*3+2]=P[2]+radius*(cosP*oz+sinP*dz);
+        const nx2=cosP*ox+sinP*dx,ny2=cosP*oy+sinP*dy,nz2=cosP*oz+sinP*dz;
+        const nl=Math.sqrt(nx2*nx2+ny2*ny2+nz2*nz2)||1;
+        nor[vi*3]=nx2/nl; nor[vi*3+1]=ny2/nl; nor[vi*3+2]=nz2/nl;
+        uv.set([0.5+0.5*cosT*cosP,0.5+0.5*sinT*cosP],vi*2);
+      }
+    }
+    const pi=capOff+bands*sides;
+    pos[pi*3]=P[0]+radius*dx; pos[pi*3+1]=P[1]+radius*dy; pos[pi*3+2]=P[2]+radius*dz;
+    nor[pi*3]=dx; nor[pi*3+1]=dy; nor[pi*3+2]=dz;
+    uv.set([0.5,0.5],pi*2);
+    for(let band=0;band<bands-1;band++){
+      for(let j=0;j<sides;j++){
+        const j2=(j+1)%sides;
+        const a=capOff+band*sides+j,b2=capOff+band*sides+j2;
+        const c2=capOff+(band+1)*sides+j,d=capOff+(band+1)*sides+j2;
+        idx.push(a,b2,c2, b2,d,c2);
+      }
+    }
+    for(let j=0;j<sides;j++){
+      const j2=(j+1)%sides;
+      idx.push(pi,capOff+(bands-1)*sides+j2,capOff+(bands-1)*sides+j);
+    }
+  }
+  addHemi(0,0,-1);
+  addHemi(vPC,N-1,+1);
+  return{pos,nor,uv,idx:new Uint32Array(idx)};
+}
+
+function smoothCtrl(pts,closed,iters=3){
+  let p=pts.map(v=>[...v]);
+  const n=p.length;
+  for(let it=0;it<iters;it++){
+    p=p.map((v,i)=>{
+      if(!closed&&(i===0||i===n-1))return v;
+      const prev=p[(i-1+n)%n],next=p[(i+1)%n];
+      return v.map((c,d)=>c*0.5+prev[d]*0.25+next[d]*0.25);
+    });
+  }
+  return p;
+}
+
+function dedupeCtrl(pts,minDist=0.12){
+  const out=[pts[0]];
+  for(let i=1;i<pts.length;i++){
+    const d=Math.hypot(pts[i][0]-out[out.length-1][0],pts[i][1]-out[out.length-1][1],pts[i][2]-out[out.length-1][2]);
+    if(d>=minDist) out.push(pts[i]);
+  }
+  return out.length>=3?out:pts;
+}
+
+function genOrganic(cx){
+  const nWaypoints=[22,42,72][cx-1],spread=[1.0,1.3,1.5][cx-1];
+  const angNoiseH=[0.06,0.14,0.26][cx-1],angDamp=[0.88,0.83,0.76][cx-1];
+  const evtProb=[0.07,0.12,0.20][cx-1],maxLoopAng=[0.28,0.44,0.68][cx-1];
+  const avoidRad=[0.40,0.32,0.26][cx-1],zRange=[0.9,1.3,1.7][cx-1];
+  const loopBias=cx===3?0.60+Math.random()*0.35:0.28+Math.random()*0.55;
+  let x=(Math.random()-0.5)*0.5*spread,y=(Math.random()-0.5)*0.5*spread,z=(Math.random()-0.5)*zRange*0.4;
+  let heading=Math.random()*Math.PI*2,angVH=(Math.random()-0.5)*0.25;
+  let spd=(0.14+Math.random()*0.10)*spread,vz=(Math.random()-0.5)*spd*0.6,angVZ=(Math.random()-0.5)*0.08;
+  const pts=[],hist=[],sx=x,sy=y,sz=z,homeStart=Math.floor(nWaypoints*0.60);
+  for(let i=0;i<nWaypoints;i++){
+    pts.push([x,y,z]);
+    if(hist.length>4){
+      let repX=0,repY=0,repZ=0;
+      for(let k=0;k<hist.length-4;k++){
+        const h=hist[k],ex=x-h[0],ey=y-h[1],ez=z-h[2];
+        const d2=ex*ex+ey*ey+ez*ez,ar=avoidRad;
+        if(d2<ar*ar&&d2>1e-6){
+          const d=Math.sqrt(d2),f=(ar-d)/d;
+          repX+=ex*f*0.4; repY+=ey*f*0.4; repZ+=ez*f*1.8;
+        }
+      }
+      const rm=Math.sqrt(repX*repX+repY*repY+repZ*repZ);
+      if(rm>0.005){
+        const repH=Math.atan2(repY,repX);
+        let hd=repH-heading; hd=((hd+Math.PI*3)%(Math.PI*2))-Math.PI;
+        heading+=hd*0.15; vz+=repZ*0.7;
+      }
+    }
+    hist.push([x,y,z]);
+    x+=Math.cos(heading)*spd; y+=Math.sin(heading)*spd;
+    z+=vz; vz-=z*0.04; vz=Math.max(-spd*0.8,Math.min(spd*0.8,vz));
+    if(Math.abs(z)>zRange){z=Math.sign(z)*zRange;vz*=-0.5;}
+    const r=Math.sqrt(x*x+y*y),outerR=spread*[0.70,0.60,0.52][cx-1];
+    if(r>outerR){
+      const backH=Math.atan2(-y,-x);
+      let hd=backH-heading; hd=((hd+Math.PI*3)%(Math.PI*2))-Math.PI;
+      heading+=hd*Math.min(0.45,(r-outerR)/(spread*0.35));
+    }
+    heading+=angVH; angVH+=(Math.random()-0.5)*angNoiseH; angVH*=angDamp;
+    angVZ+=(Math.random()-0.5)*[0.04,0.07,0.11][cx-1]; angVZ*=0.85; vz+=angVZ;
+    const isHoming=i>=homeStart;
+    if(isHoming){
+      const t=(i-homeStart)/(nWaypoints-1-homeStart+0.001);
+      const toH=Math.atan2(sy-y,sx-x);
+      let hd=toH-heading; hd=((hd+Math.PI*3)%(Math.PI*2))-Math.PI;
+      heading+=hd*t*0.45; vz+=(sz-z)*t*0.14;
+      angVH*=(1-t*0.55); angVZ*=(1-t*0.55);
+    }
+    spd+=(Math.random()-0.5)*spread*0.018;
+    spd=Math.max(spread*0.07,Math.min(spread*0.24,spd));
+    if(!isHoming&&Math.random()<evtProb){
+      if(Math.random()<loopBias){
+        const dir=Math.random()>0.5?1:-1;
+        angVH=dir*(0.20+Math.random()*maxLoopAng);
+        if(Math.random()<0.4) vz=(Math.random()-0.5)*spd*0.9;
+        spd=spread*(0.09+Math.random()*0.09);
+      } else {
+        angVH*=0.08; spd=spread*(0.16+Math.random()*0.10);
+      }
+    }
+  }
+  return pts;
+}
+
+function genFlowing(cx,sp,zs){
+  const n=7+cx*3,pts=[],a=Math.random()*Math.PI*2,co=Math.cos(a),si=Math.sin(a);
+  for(let i=0;i<n;i++){
+    const t=i/(n-1),along=(t-.5)*sp*2.4,perp=(Math.random()-.5)*sp*1.1;
+    pts.push([co*along-si*perp, si*along+co*perp, (Math.random()-.5)*zs]);
+  }
+  return pts;
+}
+
+// ── Colour palettes ───────────────────────────────────────────────────────────
+const S3_COLORS={
+  green:  {base:[0.57,0.96,0.71],hi:[0.82,1.00,0.88],lo:[0.12,0.40,0.22]},
+  gold:   {base:[1.00,0.74,0.23],hi:[1.00,0.93,0.72],lo:[0.45,0.28,0.02]},
+  pink:   {base:[0.98,0.31,0.31],hi:[1.00,0.75,0.75],lo:[0.40,0.04,0.04]},
+  purple: {base:[0.40,0.19,0.97],hi:[0.75,0.63,1.00],lo:[0.14,0.06,0.42]},
+  white:  {base:[0.94,0.94,0.94],hi:[1.00,1.00,1.00],lo:[0.50,0.50,0.52]},
+};
+
+// ── Lighting ──────────────────────────────────────────────────────────────────
+const S3_LIGHTS={
+  studio: {key:[-0.5,0.8,0.6],fill:[0.4,-0.3,-0.3],spec:90,amb:0.10,fillStr:0.22},
+};
+
+// ── Shaders ───────────────────────────────────────────────────────────────────
+const S3_VERT=`
+attribute vec3 aPos; attribute vec3 aNor; attribute vec2 aUv;
+uniform mat4 uMVP; uniform mat4 uMV; uniform mat3 uNM;
+varying vec3 vN; varying vec3 vVP; varying vec2 vUv;
+void main(){
+  vec4 mvp=uMV*vec4(aPos,1.0); vVP=mvp.xyz; vN=normalize(uNM*aNor); vUv=aUv;
+  gl_Position=uMVP*vec4(aPos,1.0);
+}`;
+const S3_FRAG=`
+precision highp float;
+uniform vec3 uBase; uniform vec3 uHi; uniform vec3 uLo;
+uniform vec3 uKey; uniform vec3 uFill;
+uniform float uSpec; uniform float uAmb; uniform float uFillStr; uniform float uOpacity; uniform float uAoPass;
+varying vec3 vN; varying vec3 vVP; varying vec2 vUv;
+void main(){
+  vec3 N=normalize(vN); vec3 V=normalize(-vVP);
+  vec3 L1=normalize(uKey); vec3 L2=normalize(uFill);
+  float d1=max(dot(N,L1),0.0); float d2=max(dot(N,L2),0.0)*uFillStr;
+  float light=d1*0.82+d2+uAmb;
+  vec3 col=light<0.35?mix(uLo,uBase,light/0.35):mix(uBase,uHi,(light-0.35)/0.65);
+  vec3 H=normalize(L1+V); float spec=pow(max(dot(N,H),0.0),uSpec);
+  col=mix(col,uHi*1.15,spec*0.95);
+  float rim=1.0-max(dot(N,V),0.0); rim=rim*rim*rim*rim; col+=uHi*rim*0.12;
+  float outA=uAoPass>.5?clamp((-vVP.z-.1)/49.9,.001,1.):uOpacity;
+  gl_FragColor=vec4(clamp(col,0.0,1.0),outA);
+}`;
+const S3_VERT_AO=`attribute vec2 aPos;varying vec2 vUv;void main(){vUv=aPos*.5+.5;gl_Position=vec4(aPos,0.,1.);}`;
+const S3_FRAG_AO=`precision highp float;
+uniform sampler2D uScene;uniform vec2 uInvRes;varying vec2 vUv;
+void main(){
+  vec4 c=texture2D(uScene,vUv);float depth=c.a;
+  if(depth<5e-4){gl_FragColor=vec4(0.,0.,0.,0.);return;}
+  float ao=0.;
+  for(int i=-3;i<=3;i++)for(int j=-3;j<=3;j++){
+    if(i==0&&j==0)continue;
+    float nd=texture2D(uScene,vUv+vec2(float(i),float(j))*uInvRes*3.).a;
+    if(nd>5e-4)ao+=smoothstep(.003,.025,depth-nd);
+  }
+  ao/=48.;
+  gl_FragColor=vec4(c.rgb*(1.-ao*.5),1.);
+}`;
+
+// ── WebGL setup ───────────────────────────────────────────────────────────────
+const s3canvas = document.getElementById('stroke3d');
+const s3gl = s3canvas.getContext('webgl', {antialias:true, preserveDrawingBuffer:true, alpha:true});
+
+// State exposed for external wiring
+const s3State = { style:'organic', color:'green', cx:2, lt:'studio', radius:0.022, opacity:1.0, titleText:'' };
+
+let s3ModelMat = m4mul(m4rotY(-0.4), m4rotX(0.18));
+const s3orbit  = { dist:2.8 };
+const s3turntableSpeed = 0.0003;
+
+function s3compile(type, src){
+  const sh = s3gl.createShader(type);
+  s3gl.shaderSource(sh, src); s3gl.compileShader(sh);
+  if(!s3gl.getShaderParameter(sh, s3gl.COMPILE_STATUS)) throw s3gl.getShaderInfoLog(sh);
+  return sh;
+}
+
+const s3prog = s3gl.createProgram();
+s3gl.attachShader(s3prog, s3compile(s3gl.VERTEX_SHADER, S3_VERT));
+s3gl.attachShader(s3prog, s3compile(s3gl.FRAGMENT_SHADER, S3_FRAG));
+s3gl.linkProgram(s3prog);
+
+const s3aPos = s3gl.getAttribLocation(s3prog,'aPos');
+const s3aNor = s3gl.getAttribLocation(s3prog,'aNor');
+const s3aUv  = s3gl.getAttribLocation(s3prog,'aUv');
+const s3uMVP = s3gl.getUniformLocation(s3prog,'uMVP');
+const s3uMV  = s3gl.getUniformLocation(s3prog,'uMV');
+const s3uNM  = s3gl.getUniformLocation(s3prog,'uNM');
+const s3uBase= s3gl.getUniformLocation(s3prog,'uBase');
+const s3uHi  = s3gl.getUniformLocation(s3prog,'uHi');
+const s3uLo  = s3gl.getUniformLocation(s3prog,'uLo');
+const s3uKey = s3gl.getUniformLocation(s3prog,'uKey');
+const s3uFill= s3gl.getUniformLocation(s3prog,'uFill');
+const s3uSpec= s3gl.getUniformLocation(s3prog,'uSpec');
+const s3uAmb = s3gl.getUniformLocation(s3prog,'uAmb');
+const s3uFStr= s3gl.getUniformLocation(s3prog,'uFillStr');
+const s3uOpa = s3gl.getUniformLocation(s3prog,'uOpacity');
+const s3uAoP = s3gl.getUniformLocation(s3prog,'uAoPass');
+
+const s3aoProg = s3gl.createProgram();
+s3gl.attachShader(s3aoProg, s3compile(s3gl.VERTEX_SHADER, S3_VERT_AO));
+s3gl.attachShader(s3aoProg, s3compile(s3gl.FRAGMENT_SHADER, S3_FRAG_AO));
+s3gl.linkProgram(s3aoProg);
+const s3aoAPos  = s3gl.getAttribLocation(s3aoProg,'aPos');
+const s3uScene  = s3gl.getUniformLocation(s3aoProg,'uScene');
+const s3uInvRes = s3gl.getUniformLocation(s3aoProg,'uInvRes');
+
+const s3quadBuf = s3gl.createBuffer();
+s3gl.bindBuffer(s3gl.ARRAY_BUFFER, s3quadBuf);
+s3gl.bufferData(s3gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), s3gl.STATIC_DRAW);
+
+const s3posBuf = s3gl.createBuffer();
+const s3norBuf = s3gl.createBuffer();
+const s3uvBuf  = s3gl.createBuffer();
+const s3idxBuf = s3gl.createBuffer();
+let s3idxCount = 0;
+let s3idxType  = s3gl.UNSIGNED_SHORT;
+const s3extUint = s3gl.getExtension('OES_element_index_uint');
+
+let s3fbo=null, s3fboTex=null, s3fboRb=null;
+
+function s3mkFBO(w,h){
+  if(s3fbo){s3gl.deleteFramebuffer(s3fbo);s3gl.deleteTexture(s3fboTex);s3gl.deleteRenderbuffer(s3fboRb);}
+  s3fboTex=s3gl.createTexture();
+  s3gl.bindTexture(s3gl.TEXTURE_2D,s3fboTex);
+  s3gl.texImage2D(s3gl.TEXTURE_2D,0,s3gl.RGBA,w,h,0,s3gl.RGBA,s3gl.UNSIGNED_BYTE,null);
+  s3gl.texParameteri(s3gl.TEXTURE_2D,s3gl.TEXTURE_MIN_FILTER,s3gl.LINEAR);
+  s3gl.texParameteri(s3gl.TEXTURE_2D,s3gl.TEXTURE_MAG_FILTER,s3gl.LINEAR);
+  s3gl.texParameteri(s3gl.TEXTURE_2D,s3gl.TEXTURE_WRAP_S,s3gl.CLAMP_TO_EDGE);
+  s3gl.texParameteri(s3gl.TEXTURE_2D,s3gl.TEXTURE_WRAP_T,s3gl.CLAMP_TO_EDGE);
+  s3fboRb=s3gl.createRenderbuffer();
+  s3gl.bindRenderbuffer(s3gl.RENDERBUFFER,s3fboRb);
+  s3gl.renderbufferStorage(s3gl.RENDERBUFFER,s3gl.DEPTH_COMPONENT16,w,h);
+  s3fbo=s3gl.createFramebuffer();
+  s3gl.bindFramebuffer(s3gl.FRAMEBUFFER,s3fbo);
+  s3gl.framebufferTexture2D(s3gl.FRAMEBUFFER,s3gl.COLOR_ATTACHMENT0,s3gl.TEXTURE_2D,s3fboTex,0);
+  s3gl.framebufferRenderbuffer(s3gl.FRAMEBUFFER,s3gl.DEPTH_ATTACHMENT,s3gl.RENDERBUFFER,s3fboRb);
+  s3gl.bindFramebuffer(s3gl.FRAMEBUFFER,null);
+}
+
+let s3revealT    = 1;   // 0 → 1 draw progress; 1 = fully drawn
+let s3revealSpeed = 0.003; // fraction of total geometry revealed per frame (~200 frames ≈ 3.5s)
+
+function s3upload(geo){
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3posBuf); s3gl.bufferData(s3gl.ARRAY_BUFFER,geo.pos,s3gl.STATIC_DRAW);
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3norBuf); s3gl.bufferData(s3gl.ARRAY_BUFFER,geo.nor,s3gl.STATIC_DRAW);
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3uvBuf);  s3gl.bufferData(s3gl.ARRAY_BUFFER,geo.uv,s3gl.STATIC_DRAW);
+  let idxData=geo.idx;
+  if(s3extUint&&geo.idx instanceof Uint32Array){s3idxType=s3gl.UNSIGNED_INT;}
+  else{s3idxType=s3gl.UNSIGNED_SHORT;if(geo.idx instanceof Uint32Array)idxData=new Uint16Array(geo.idx);}
+  s3gl.bindBuffer(s3gl.ELEMENT_ARRAY_BUFFER,s3idxBuf); s3gl.bufferData(s3gl.ELEMENT_ARRAY_BUFFER,idxData,s3gl.STATIC_DRAW);
+  s3idxCount=geo.idx.length;
+  s3revealT = 0; // restart reveal animation on every new geometry upload
+}
+
+function s3mergeGeos(geos){
+  let tv=0,ti=0;
+  for(const g of geos){tv+=g.pos.length/3;ti+=g.idx.length;}
+  const pos=new Float32Array(tv*3),nor=new Float32Array(tv*3),uv=new Float32Array(tv*2),idx=new Uint32Array(ti);
+  let vo=0,io=0;
+  for(const g of geos){
+    pos.set(g.pos,vo*3);nor.set(g.nor,vo*3);uv.set(g.uv,vo*2);
+    for(let k=0;k<g.idx.length;k++)idx[io+k]=g.idx[k]+vo;
+    vo+=g.pos.length/3;io+=g.idx.length;
+  }
+  return{pos,nor,uv,idx};
+}
+
+// ── Hershey font for 3D Script mode ──────────────────────────────────────────
+let s3Hershey = null;
+
+function s3parseHershey(data){
+  const glyphs=[];
+  const lines=data.replace(/\r/g,'').split('\n');
+  const recs=[];
+  for(const ln of lines){
+    if(!ln.trim())continue;
+    if(ln[0]>='0'&&ln[0]<='9')recs.push(ln);
+    else if(recs.length>0)recs[recs.length-1]+=ln;
+  }
+  for(const rec of recs){
+    let i=0;
+    while(i<rec.length&&rec[i]>='0'&&rec[i]<='9')i++;
+    while(i<rec.length&&rec[i]===' ')i++;
+    let pairStr='';
+    while(i<rec.length&&rec[i]>='0'&&rec[i]<='9'){pairStr+=rec[i];i++;}
+    const numPairs=parseInt(pairStr)-1;
+    const leftB=rec.charCodeAt(i)-82;i++;
+    const rightB=rec.charCodeAt(i)-82;i++;
+    const advance=rightB-leftB;
+    const strokes=[];let cur=[];
+    for(let p=0;p<numPairs&&i+1<rec.length;p++){
+      const cx2=rec.charCodeAt(i)-82;i++;
+      const cy=rec.charCodeAt(i)-82;i++;
+      if(cx2===32-82&&cy===0){if(cur.length)strokes.push(cur);cur=[];}
+      else cur.push([cx2,-cy]);
+    }
+    if(cur.length)strokes.push(cur);
+    glyphs.push({advance,strokes});
+  }
+  return glyphs;
+}
+
+function s3cubicBez(p0,c0,c1,p1,t){
+  const m=1-t;
+  return[m*m*m*p0[0]+3*m*m*t*c0[0]+3*m*t*t*c1[0]+t*t*t*p1[0],
+         m*m*m*p0[1]+3*m*m*t*c0[1]+3*m*t*t*c1[1]+t*t*t*p1[1],
+         m*m*m*p0[2]+3*m*m*t*c0[2]+3*m*t*t*c1[2]+t*t*t*p1[2]];
+}
+function s3makeBridge(p0,t0,p1,t1,n=4){
+  const d=vlen(vsub(p1,p0));
+  if(d<0.007)return[];
+  const dir=vnrm(vsub(p1,p0));
+  const et0=vnrm(vadd(vscl(dir,0.8),vscl(t0,0.2)));
+  const et1=vnrm(vadd(vscl(dir,0.8),vscl(t1,0.2)));
+  const tension=d*0.28;
+  const c0=vadd(p0,vscl(et0,tension)),c1=vsub(p1,vscl(et1,tension));
+  const nn=Math.max(2,Math.min(4,Math.round(d*30)));
+  return Array.from({length:nn-1},(_,i)=>s3cubicBez(p0,c0,c1,p1,(i+1)/nn));
+}
+
+function s3genText(text,cx){
+  if(!s3Hershey)return null;
+  const sides=14;
+  let totalAdv=0;
+  for(const ch of text){
+    if(ch===' '){totalAdv+=9;continue;}
+    const gi=ch.charCodeAt(0)-32;
+    totalAdv+=(gi>=0&&gi<s3Hershey.length)?(s3Hershey[gi].advance+3):9;
+  }
+  if(!totalAdv)return null;
+  const targetW=[1.2,1.6,2.1][cx-1];
+  const scale=targetW/totalAdv;
+  const allGeos=[];
+  let cursorX=0,letterIdx=0; // xOff post-step centres on world origin
+  let minY=Infinity,maxY=-Infinity; // track actual y extent for camera fitting
+  const words=text.split(' ');
+  for(let wi=0;wi<words.length;wi++){
+    const word=words[wi];
+    if(!word){cursorX+=9*scale;continue;}
+    const mainStrokes=[],dotStrokes=[],crossStrokes=[];
+    for(const ch of word){
+      const gi=ch.charCodeAt(0)-32;
+      if(gi<0||gi>=s3Hershey.length){cursorX+=6*scale;letterIdx++;continue;}
+      const glyph=s3Hershey[gi];
+      const zOff=Math.sin(letterIdx*1.5)*0.03;
+      for(const stroke of glyph.strokes){
+        if(stroke.length<2)continue;
+        const THR=3;
+        const wpts=stroke.map(([sx,sy])=>{
+          const wy=sy>THR?(THR+(sy-THR)*1.30)*scale:sy<-THR?(-THR+(sy+THR)*1.35)*scale:sy*scale;
+          if(wy<minY)minY=wy; if(wy>maxY)maxY=wy;
+          return[cursorX+sx*scale,wy,zOff-wy*0.12];
+        });
+        const dx=Math.abs(stroke[stroke.length-1][0]-stroke[0][0]);
+        const dy=Math.abs(stroke[stroke.length-1][1]-stroke[0][1]);
+        const rawSpan=Math.hypot(dx,dy);
+        if(rawSpan<5.5&&stroke.length<=6){
+          dotStrokes.push(wpts.map(p=>[p[0],p[1]-2*scale,p[2]+0.04]));
+        } else if((ch==='t'||ch==='f')&&dx>3*(dy+0.5)&&rawSpan>3){
+          crossStrokes.push(wpts.map(p=>[p[0],p[1]-1.5*scale,p[2]]));
+        } else {
+          mainStrokes.push(wpts);
+        }
+      }
+      cursorX+=(glyph.advance+3)*scale;
+      letterIdx++;
+    }
+    if(mainStrokes.length){
+      const allCtrl=[...mainStrokes[0]];
+      for(let si=1;si<mainStrokes.length;si++){
+        const prev=mainStrokes[si-1],curr=mainStrokes[si];
+        const p0=prev[prev.length-1],p1=curr[0];
+        const t0=prev.length>=2?vnrm(vsub(prev[prev.length-1],prev[prev.length-2])):[1,0,0];
+        const t1=curr.length>=2?vnrm(vsub(curr[1],curr[0])):[1,0,0];
+        allCtrl.push(...s3makeBridge(p0,t0,p1,t1,5),...curr);
+      }
+      const ctrl=smoothCtrl(dedupeCtrl(allCtrl,0.003),false,3);
+      const nSamples=Math.max(ctrl.length*3,100);
+      const{pts,tans}=buildSpline(ctrl,nSamples,false);
+      const frames=buildFrames(pts,tans);
+      const r=s3State.radius;
+      allGeos.push(buildTube(pts,frames,r,sides));
+      const t0f=frames[0].t,tN=frames[frames.length-1].t,off=r*0.15;
+      allGeos.push(buildSphere(pts[0][0]+t0f[0]*off,pts[0][1]+t0f[1]*off,pts[0][2]+t0f[2]*off,r,14,10));
+      allGeos.push(buildSphere(pts[pts.length-1][0]-tN[0]*off,pts[pts.length-1][1]-tN[1]*off,pts[pts.length-1][2]-tN[2]*off,r,14,10));
+    }
+    for(const ds of dotStrokes){
+      const cx2=ds.reduce((s,p)=>s+p[0],0)/ds.length;
+      const cy2=ds.reduce((s,p)=>s+p[1],0)/ds.length;
+      const cz2=ds.reduce((s,p)=>s+p[2],0)/ds.length;
+      allGeos.push(buildSphere(cx2,cy2,cz2,s3State.radius*1.5,14,10));
+    }
+    for(const cs of crossStrokes){
+      const ctrl=smoothCtrl(cs,false,1);
+      const nSamples=Math.max(ctrl.length*4,20);
+      const{pts,tans}=buildSpline(ctrl,nSamples,false);
+      const frames=buildFrames(pts,tans);
+      allGeos.push(buildTube(pts,frames,s3State.radius,sides));
+      allGeos.push(buildSphere(pts[0][0],pts[0][1],pts[0][2],s3State.radius,12,8));
+      allGeos.push(buildSphere(pts[pts.length-1][0],pts[pts.length-1][1],pts[pts.length-1][2],s3State.radius,12,8));
+    }
+    if(wi<words.length-1)cursorX+=9*scale;
+  }
+  if(!allGeos.length)return null;
+  const xOff=-cursorX/2,yOff=-0.5*scale*8;
+  for(const g of allGeos)for(let k=0;k<g.pos.length;k+=3){g.pos[k]+=xOff;g.pos[k+1]+=yOff;}
+  const r=s3State.radius;
+  return {geo:s3mergeGeos(allGeos), minY:minY+yOff-r, maxY:maxY+yOff+r};
+}
+
+// ── Generate geometry ─────────────────────────────────────────────────────────
+function s3generate(){
+  if(!s3gl||!s3idxBuf) return;
+  const cx = s3State.cx;
+
+  // Title mode: render single word spanning the full canvas width
+  if(state.titleMode === '3d-script'){
+    if(!s3Hershey){ s3PendingTitle = true; return; }
+    // One word only — take first word of headline
+    const fullText = s3State.titleText || getHeadlineText();
+    const word = fullText.trim().split(/\s+/)[0] || 'Make';
+    const textCx = 3; // cx=3 → targetW=2.1 world units
+    const result = s3genText(word, textCx);
+    if(result){
+      s3upload(result.geo);
+      // Fit to canvas: dist must satisfy BOTH width and height constraints
+      const targetW = 2.1;
+      const textH   = result.maxY - result.minY;
+      const vw = s3canvas.width  || s3canvas.clientWidth  || 800;
+      const vh = s3canvas.height || s3canvas.clientHeight || 450;
+      const aspect   = vw / vh;
+      const halfTanV = Math.tan(Math.PI / 9); // tan(vFOV/2) for vFOV=PI/4.5
+      const distW = targetW / (aspect * 2 * halfTanV * 0.88);
+      const distH = textH   / (2             * halfTanV * 0.88);
+      s3orbit.dist = Math.max(distW, distH); // whichever is tighter
+      s3ModelMat = m4mul(m4rotY(-0.06), m4rotX(0.05));
+    }
+    return;
+  }
+
+  if(s3State.style==='script'){
+    if(!s3Hershey){ return; }
+    const text = document.getElementById('s3-text-input').value || 'Gravity Sketch';
+    const result = s3genText(text, cx);
+    if(result){
+      s3upload(result.geo);
+      s3orbit.dist = 4.2;
+      s3ModelMat = m4mul(m4rotY(-0.15), m4rotX(0.10));
+    }
+    return;
+  }
+
+  let ctrl, closed=false, samples, sides=36;
+  if(s3State.style==='organic'){
+    ctrl=genOrganic(cx); closed=true;
+    samples=[340,500,700][cx-1];
+    ctrl=dedupeCtrl(ctrl,[0.06,0.05,0.04][cx-1]);
+    ctrl=smoothCtrl(ctrl,false,[1,1,0][cx-1]);
+  } else {
+    // Flowing: larger spread and Z range for a bigger, bolder stroke
+    ctrl=genFlowing(cx, 2.2, 0.9); closed=false;
+    samples=[260,340,420][cx-1];
+    ctrl=dedupeCtrl(ctrl,0.10);
+    ctrl=smoothCtrl(ctrl,false,2);
+  }
+  const{pts,tans}=buildSpline(ctrl,samples,closed);
+  const frames=buildFrames(pts,tans);
+  const tube=buildTube(pts,frames,s3State.radius,sides);
+  s3upload(closed ? tube : s3mergeGeos([tube, buildCapGeo(pts,frames,s3State.radius,sides)]));
+  s3orbit.dist = 3.4; // pull back so full tube fits within canvas bounds
+}
+
+let s3PendingTitle = false;
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function s3resize(){
+  const dpr=window.devicePixelRatio||1;
+  const w=s3canvas.clientWidth,h=s3canvas.clientHeight;
+  if(w<1||h<1) return;
+  s3canvas.width=w*dpr; s3canvas.height=h*dpr;
+  s3gl.viewport(0,0,s3canvas.width,s3canvas.height);
+  s3mkFBO(s3canvas.width,s3canvas.height);
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function s3renderScene(aoMode){
+  const w=s3canvas.width,h=s3canvas.height;
+  s3gl.clearColor(0,0,0,0); // always transparent bg — brand explorer bg shows through
+  s3gl.clear(s3gl.COLOR_BUFFER_BIT|s3gl.DEPTH_BUFFER_BIT);
+  s3gl.enable(s3gl.DEPTH_TEST);
+  s3gl.disable(s3gl.CULL_FACE);
+  if(!s3idxCount)return;
+
+  // For 3D-script title, nudge look-target left so the word sits right of centre
+  const lookX = state.titleMode === '3d-script' ? -0.18 : 0;
+  const VIEW=m4look([0,0,s3orbit.dist],[lookX,0,0],[0,1,0]);
+  const MV=m4mul(VIEW,s3ModelMat);
+  const P=m4persp(Math.PI/4.5,w/h,.1,50);
+  const MVP=m4mul(P,MV);
+  const NM=m3of(MV);
+
+  s3gl.useProgram(s3prog);
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3posBuf);
+  s3gl.vertexAttribPointer(s3aPos,3,s3gl.FLOAT,false,0,0); s3gl.enableVertexAttribArray(s3aPos);
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3norBuf);
+  s3gl.vertexAttribPointer(s3aNor,3,s3gl.FLOAT,false,0,0); s3gl.enableVertexAttribArray(s3aNor);
+  s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3uvBuf);
+  s3gl.vertexAttribPointer(s3aUv,2,s3gl.FLOAT,false,0,0);  s3gl.enableVertexAttribArray(s3aUv);
+  s3gl.bindBuffer(s3gl.ELEMENT_ARRAY_BUFFER,s3idxBuf);
+
+  s3gl.uniformMatrix4fv(s3uMVP,false,MVP);
+  s3gl.uniformMatrix4fv(s3uMV,false,MV);
+  s3gl.uniformMatrix3fv(s3uNM,false,NM);
+
+  const col=S3_COLORS[s3State.color];
+  s3gl.uniform3fv(s3uBase,col.base); s3gl.uniform3fv(s3uHi,col.hi); s3gl.uniform3fv(s3uLo,col.lo);
+  const lt=S3_LIGHTS[s3State.lt];
+  s3gl.uniform3fv(s3uKey,vnrm(lt.key)); s3gl.uniform3fv(s3uFill,vnrm(lt.fill));
+  s3gl.uniform1f(s3uSpec,lt.spec); s3gl.uniform1f(s3uAmb,lt.amb); s3gl.uniform1f(s3uFStr,lt.fillStr);
+  s3gl.uniform1f(s3uOpa,s3State.opacity);
+  s3gl.uniform1f(s3uAoP,aoMode?1.0:0.0);
+
+  s3gl.disable(s3gl.BLEND); s3gl.depthMask(true);
+  // Reveal: draw only the first revealCount indices (rounded to whole triangles)
+  const revealCount = Math.min(s3idxCount, Math.round(s3revealT * s3idxCount / 3) * 3);
+  s3gl.drawElements(s3gl.TRIANGLES, revealCount, s3idxType, 0);
+}
+
+function s3drawFrame(){
+  const w=s3canvas.width,h=s3canvas.height;
+  if(!w||!h)return;
+  if(s3fbo){
+    s3gl.bindFramebuffer(s3gl.FRAMEBUFFER,s3fbo);
+    s3renderScene(true);
+    s3gl.bindFramebuffer(s3gl.FRAMEBUFFER,null);
+    s3gl.clearColor(0,0,0,0); s3gl.clear(s3gl.COLOR_BUFFER_BIT);
+    s3gl.disable(s3gl.DEPTH_TEST); s3gl.enable(s3gl.BLEND);
+    s3gl.blendFunc(s3gl.SRC_ALPHA,s3gl.ONE_MINUS_SRC_ALPHA);
+    s3gl.useProgram(s3aoProg);
+    s3gl.bindBuffer(s3gl.ARRAY_BUFFER,s3quadBuf);
+    s3gl.vertexAttribPointer(s3aoAPos,2,s3gl.FLOAT,false,0,0); s3gl.enableVertexAttribArray(s3aoAPos);
+    s3gl.activeTexture(s3gl.TEXTURE0); s3gl.bindTexture(s3gl.TEXTURE_2D,s3fboTex);
+    s3gl.uniform1i(s3uScene,0); s3gl.uniform2f(s3uInvRes,1/w,1/h);
+    s3gl.drawArrays(s3gl.TRIANGLES,0,6);
+    s3gl.disable(s3gl.BLEND);
+  } else {
+    s3renderScene(false);
+  }
+}
+
+// ── Spatial overlay: copies a diagonal slice of the WebGL canvas above the text ──
+function s3compositeOverlay(){
+  const overlay = document.getElementById('stroke3d-overlay');
+  if (!overlay || state.strokeLayer !== 'through') return;
+  if (s3canvas.style.display === 'none') { overlay.style.display = 'none'; return; }
+
+  // Keep 2D canvas resolution in sync with WebGL canvas
+  const W = s3canvas.width, H = s3canvas.height;
+  if (overlay.width !== W || overlay.height !== H) {
+    overlay.width = W; overlay.height = H;
+  }
+
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  // Diagonal clip — upper portion appears in front of text, lower portion behind.
+  // The line runs from (0, 62%) on the left to (100%, 38%) on the right.
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(W, 0);
+  ctx.lineTo(W, H * 0.38);
+  ctx.lineTo(0, H * 0.62);
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(s3canvas, 0, 0);
+  ctx.restore();
+}
+
+function s3loop(){
+  if(state.strokeMode==='3d' || state.titleMode==='3d-script'){
+    if(s3revealT < 1) s3revealT = Math.min(1, s3revealT + s3revealSpeed);
+    s3ModelMat=m4mul(m4rotY(s3turntableSpeed),s3ModelMat);
+    s3drawFrame();
+    s3compositeOverlay();
+  }
+  requestAnimationFrame(s3loop);
+}
+
+// ── Public API called by brand explorer ───────────────────────────────────────
+function s3setStyle(style){
+  s3State.style = style;
+  const inp = document.getElementById('s3-text-input');
+  inp.style.display = style === 'script' ? 'block' : 'none';
+  if(style === 'flowing'){
+    s3State.radius = 0.058;
+    state.scale = 'large';
+    document.querySelectorAll('[data-group="scale"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'large'));
+  } else if(style === 'organic'){
+    s3State.radius = 0.022;
+  }
+  // Re-run full stroke render so positioning is recalculated for the new style
+  renderStroke();
+}
+
+function s3setColorByName(name){
+  s3State.color = name;
+  if(s3idxCount) s3drawFrame();
+}
+
+function s3pickColor(el, name){
+  document.querySelectorAll('.s3-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  s3setColorByName(name);
+}
+
+function s3setText(text){
+  if(s3State.style==='script') s3generate();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function s3loadHershey(){
+  try{
+    const r = await fetch('assets/cursive.jhf');
+    s3Hershey = s3parseHershey(await r.text());
+    if(s3State.style==='script') s3generate();
+    if(s3PendingTitle){ s3PendingTitle=false; s3generate(); render(); }
+  } catch(e){ console.warn('Hershey load failed',e); }
+}
+
+s3loadHershey();
+s3loop(); // runs forever; only draws when stroke mode is '3d' or title is '3d-script'
+
+
+// ─── FINAL INIT ───────────────────────────────────────────────────────────────
+// Seed with generated copy on first load
+(function initCopy() {
+  const { title, body } = genCopy();
+  state.copy = 'custom';
+  state.customText = title;
+  state.bodyText   = body;
+  document.getElementById('custom-text').value     = title.replace(/\n/g, ' / ');
+  document.getElementById('body-text-input').value = body;
+})();
+render();
+</script>
+</body>
+</html>
