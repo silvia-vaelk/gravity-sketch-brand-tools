@@ -238,10 +238,10 @@ html,body{
     <div class="sl">Stroke Colour</div>
     <div class="sr">
       <!-- data-marble + data-base → JS applies sphere gradient at boot -->
-      <div class="sw active" data-color="green"  data-marble data-base="#92F5B5" onclick="setColor(this)"></div>
+      <div class="sw"        data-color="green"  data-marble data-base="#92F5B5" onclick="setColor(this)"></div>
       <div class="sw"        data-color="gold"   data-marble data-base="#FFBC3A" onclick="setColor(this)"></div>
       <div class="sw"        data-color="pink"   data-marble data-base="#FA5050" onclick="setColor(this)"></div>
-      <div class="sw"        data-color="purple" data-marble data-base="#6530F7" onclick="setColor(this)"></div>
+      <div class="sw active" data-color="purple" data-marble data-base="#6530F7" onclick="setColor(this)"></div>
       <div class="sw"        data-color="white"  data-marble data-base="#F0F0F0" onclick="setColor(this)"></div>
       <div class="sw" id="custom-col-sw" data-color="custom" data-marble data-base="#e040fb"
            style="background:#d8d8d8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#666"
@@ -255,11 +255,11 @@ html,body{
     <div class="sl">Background</div>
     <div class="sr">
       <!-- flat class → flat solid colour, no 3D gradient -->
-      <div class="sw flat active" data-bg="#92F5B5" style="background:#92F5B5" onclick="setBg(this)"></div>
+      <div class="sw flat"        data-bg="#92F5B5" style="background:#92F5B5" onclick="setBg(this)"></div>
       <div class="sw flat"        data-bg="#FFBC3A" style="background:#FFBC3A" onclick="setBg(this)"></div>
       <div class="sw flat"        data-bg="#FA5050" style="background:#FA5050" onclick="setBg(this)"></div>
       <div class="sw flat"        data-bg="#6530F7" style="background:#6530F7" onclick="setBg(this)"></div>
-      <div class="sw flat"        data-bg="#F0F0F0" style="background:#F0F0F0;border:1px solid #dadadd" onclick="setBg(this)"></div>
+      <div class="sw flat active" data-bg="#F0F0F0" style="background:#F0F0F0;border:1px solid #dadadd" onclick="setBg(this)"></div>
       <div class="sw flat" id="transparent-bg-sw"
            style="background:repeating-conic-gradient(#c8c8c8 0% 25%,#efefef 0% 50%) 0 0/10px 10px;border:1px solid #dadadd"
            onclick="setTransparentBg()" title="Transparent"></div>
@@ -1031,8 +1031,8 @@ function m4translate(x,y){
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state={
-  style:'organic', color:'green', cx:2, lt:'studio',
-  bg:'#92F5B5', radius:0.020, opacity:1.0, obj:'glb-1', wireframe:false
+  style:'organic', color:'purple', cx:2, lt:'studio',
+  bg:'#F0F0F0', radius:0.020, opacity:1.0, obj:'glb-1', wireframe:false
 };
 
 // Arcball: store model rotation as accumulated 4×4 matrix
@@ -1896,7 +1896,8 @@ setTimeout(()=>{
   const rad=document.getElementById('rad');   rad.value=32;  onRad(rad);
   const opa=document.getElementById('opa');   opa.value=100; onOpa(opa);
   const ttspd=document.getElementById('ttspd'); ttspd.value=10; onTTSpeed(ttspd);
-  generate();
+  // Short delay lets the browser finish layout before resize() reads clientWidth
+  setTimeout(()=>{ resize(); generate(); }, 50);
 },0);
 
 // ── Stroke reveal animation ───────────────────────────────────────────────────
