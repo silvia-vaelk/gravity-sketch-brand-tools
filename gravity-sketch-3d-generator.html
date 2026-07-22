@@ -229,14 +229,7 @@ html,body{
       </a>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
-      <div class="s">3D Stroke Generator</div>
-      <a href="./gravity-sketch-brand-explorer.html"
-         style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-                color:var(--ac,#6B47DC);text-decoration:none;border:1px solid var(--ac,#6B47DC);
-                border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
-         onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
-        Brand Explorer →
-      </a>
+      <div class="s">3D Asset Generator</div>
     </div>
   </div>
 
@@ -383,18 +376,14 @@ html,body{
   <div class="div"></div>
 
   <!-- Actions -->
-  <div class="sec" style="padding-bottom:4px">
-    <button class="ab p" onclick="generate()">
-      Generate New <span class="kbd">⌘ ↩</span>
-    </button>
-  </div>
   <div class="sec" id="reveal-sec">
-    <div class="dl-row">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="ab p" onclick="generate()">
+        Generate New <span class="kbd">⌘ ↩</span>
+      </button>
       <button class="ab s" id="play-btn" onclick="playReveal()">▶ Play</button>
-      <button class="ab s" id="gif-btn"  onclick="exportGIF()">↓ GIF</button>
-      <button class="ab s" id="pan-gif-btn" onclick="exportPanGIF()">↓ Pan GIF</button>
     </div>
-    <div id="gif-bar-wrap">
+    <div id="gif-bar-wrap" style="margin-top:6px">
       <div id="gif-bar"></div>
       <div id="gif-label">Encoding…</div>
     </div>
@@ -403,6 +392,8 @@ html,body{
     <div class="dl-row">
       <button class="ab s" onclick="exportPNG(1)">↓ PNG</button>
       <button class="ab s" onclick="exportPNG(2)">↓ PNG 2×</button>
+      <button class="ab s" id="gif-btn" onclick="exportGIF()">↓ GIF</button>
+      <button class="ab s" id="pan-gif-btn" onclick="exportPanGIF()">↓ Pan GIF</button>
     </div>
   </div>
 
