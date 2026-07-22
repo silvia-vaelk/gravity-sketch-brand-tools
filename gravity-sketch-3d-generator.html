@@ -1885,6 +1885,7 @@ function exportPNG(scale){
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 resize();
+generate(); // first frame: show stroke immediately with default state
 loop();
 loadHershey();
 loadAnnotationAssets();
@@ -1896,8 +1897,7 @@ setTimeout(()=>{
   const rad=document.getElementById('rad');   rad.value=32;  onRad(rad);
   const opa=document.getElementById('opa');   opa.value=100; onOpa(opa);
   const ttspd=document.getElementById('ttspd'); ttspd.value=10; onTTSpeed(ttspd);
-  // Short delay lets the browser finish layout before resize() reads clientWidth
-  setTimeout(()=>{ resize(); generate(); }, 50);
+  generate(); // re-generate with corrected slider values
 },0);
 
 // ── Stroke reveal animation ───────────────────────────────────────────────────
