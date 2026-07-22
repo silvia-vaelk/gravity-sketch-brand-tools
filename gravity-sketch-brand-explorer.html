@@ -386,51 +386,6 @@
     flex-shrink: 0;
   }
 
-  /* ─── SAVED COMBINATIONS ─── */
-  .saved-panel {
-    background: #f4f4f4;
-    border-top: 1px solid #ddd;
-    max-height: 200px;
-    overflow-y: auto;
-    flex-shrink: 0;
-  }
-  .saved-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    background: #ececec;
-    border-bottom: 1px solid #ddd;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-  }
-  .saved-header-title {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #444;
-  }
-  .saved-list {
-    padding: 0;
-  }
-  .saved-item {
-    padding: 8px 16px;
-    border-bottom: 1px solid #e0e0e0;
-    font-size: 10px;
-    color: #555;
-    line-height: 1.6;
-    display: grid;
-    grid-template-columns: 24px 1fr auto;
-    gap: 8px;
-    align-items: start;
-  }
-  .saved-item:last-child { border-bottom: none; }
-  .saved-num { font-weight: 700; color: #6B47DC; }
-  .saved-details { color: #333; }
-  .saved-time { font-size: 9px; color: #aaa; white-space: nowrap; margin-top: 2px; }
-  .saved-empty { padding: 16px; text-align: center; font-size: 11px; color: #aaa; font-style: italic; }
 </style>
 </head>
 <body>
@@ -440,10 +395,19 @@
   <!-- ══════════════════════════ CONTROLS PANEL ══════════════════════════ -->
   <aside class="panel">
     <div class="panel-logo">
-      <div class="wordmark">Gravity Sketch</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="wordmark">Gravity Sketch</div>
+        <a href="./index.html"
+           style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+                  color:var(--muted);text-decoration:none;border:1px solid var(--line);
+                  border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
+           onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+          ← All Tools
+        </a>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
         <div class="subtitle">Brand Explorer</div>
-        <a href="http://localhost:9090/gravity-sketch-3d-generator.html"
+        <a href="./gravity-sketch-3d-generator.html"
            style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
                   color:var(--muted);text-decoration:none;border:1px solid var(--line);
                   border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
@@ -459,9 +423,9 @@
       <div class="section">
         <div class="section-label">Format</div>
         <div class="btn-grid cols-3">
-          <button class="ctrl-btn active" data-group="format" data-val="landscape-16-9" onclick="setVal(this)">16:9</button>
-          <button class="ctrl-btn" data-group="format" data-val="landscape-4-3" onclick="setVal(this)">4:3</button>
-          <button class="ctrl-btn" data-group="format" data-val="portrait" onclick="setVal(this)">Portrait</button>
+          <button class="ctrl-btn active" data-group="format" data-val="landscape-16-9" onclick="setVal(this)">1920×1080</button>
+          <button class="ctrl-btn" data-group="format" data-val="portrait" onclick="setVal(this)">1080×1920</button>
+          <button class="ctrl-btn" data-group="format" data-val="square" onclick="setVal(this)">1080×1080</button>
         </div>
       </div>
 
@@ -637,9 +601,7 @@
 
       <!-- Actions -->
       <div class="section">
-        <button class="action-btn primary" onclick="randomise()">&#x2684; Randomise</button>
-        <button class="action-btn secondary" onclick="saveCombination()">&#x2713; Save combination</button>
-        <button class="action-btn danger" onclick="clearSaved()">&#x2715; Clear saved</button>
+        <button class="action-btn primary" onclick="randomise()">&#x2684; Randomise <span style="opacity:0.55;font-size:9px;margin-left:4px">⌘↵</span></button>
       </div>
 
     </div>
@@ -678,15 +640,6 @@
       </div>
     </div>
 
-    <!-- Saved combinations -->
-    <div class="saved-panel" id="saved-panel">
-      <div class="saved-header">
-        <span class="saved-header-title">Saved Combinations</span>
-      </div>
-      <div class="saved-list" id="saved-list">
-        <div class="saved-empty" id="saved-empty">No combinations saved yet. Hit "Save combination" to log one.</div>
-      </div>
-    </div>
   </main>
 
 </div>
@@ -718,8 +671,6 @@ const state = {
   tickerText: 'In The Making >>> ',
 };
 
-const saved = [];
-let savedCounter = 0;
 
 // ─── COPY GENERATOR ───────────────────────────────────────────────────────────
 // Each entry: [headline (newlines allowed), body]
@@ -921,24 +872,24 @@ function renderFormat() {
   const outer = document.querySelector('.canvas-outer');
   switch(state.format) {
     case 'landscape-16-9':
-      outer.style.aspectRatio = '16/9';
+      outer.style.aspectRatio = '1920/1080';
       outer.style.width = '100%';
       outer.style.height = 'auto';
-      outer.style.maxWidth = 'calc((100vh - 96px) * 16/9)';
-      outer.style.maxHeight = '';
-      break;
-    case 'landscape-4-3':
-      outer.style.aspectRatio = '4/3';
-      outer.style.width = '100%';
-      outer.style.height = 'auto';
-      outer.style.maxWidth = 'calc((100vh - 96px) * 4/3)';
+      outer.style.maxWidth = 'calc((100vh - 96px) * 1920/1080)';
       outer.style.maxHeight = '';
       break;
     case 'portrait':
-      outer.style.aspectRatio = '3/4';
+      outer.style.aspectRatio = '1080/1920';
       outer.style.width = 'auto';
       outer.style.height = 'calc(100vh - 96px)';
-      outer.style.maxWidth = 'calc((100vh - 96px) * 3/4)';
+      outer.style.maxWidth = 'calc((100vh - 96px) * 1080/1920)';
+      outer.style.maxHeight = '';
+      break;
+    case 'square':
+      outer.style.aspectRatio = '1/1';
+      outer.style.width = 'auto';
+      outer.style.height = 'calc(100vh - 96px)';
+      outer.style.maxWidth = 'calc(100vh - 96px)';
       outer.style.maxHeight = '';
       break;
   }
@@ -1324,51 +1275,6 @@ function randomise() {
 }
 
 // ─── SAVE ─────────────────────────────────────────────────────────────────────
-function saveCombination() {
-  savedCounter++;
-  const now = new Date();
-  const ts = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  const dateStr = now.toLocaleDateString([], {month:'short', day:'numeric'});
-
-  const bgName = {'#FFC72C':'Yellow','#6B47DC':'Purple','#FFFFFF':'White','#000000':'Black','#F2F2F2':'Lt. Grey'}[state.bg] || state.bg;
-  const copyName = {'in-the-making':'In The Making','bringing-better':'Bringing Better Products','think-3d':'Think In 3D','custom':`"${state.customText || 'custom'}"`}[state.copy];
-  const tcName = {'#000000':'Black','#FFFFFF':'White','#6B47DC':'Purple','#FFC72C':'Yellow'}[state.typeColor];
-  const strokeLabel = state.strokeMode === '3d' ? `3D (${s3State.style}/${s3State.color})` : 'SVG';
-
-  const entry = {
-    num: savedCounter, ts: `${dateStr}, ${ts}`,
-    details: [
-      `BG: ${bgName}`,
-      `Stroke: ${strokeLabel} · ${state.pos} / ${state.scale}`,
-      `Type: ${copyName} — ${state.typeSize} — ${state.typePos} — ${tcName}`,
-      `Ticker: ${state.ticker ? state.tickerTheme : 'off'}`,
-    ].join(' · '),
-  };
-  saved.push(entry);
-  renderSaved();
-}
-
-function clearSaved() {
-  if (saved.length === 0) return;
-  saved.length = 0; savedCounter = 0;
-  renderSaved();
-}
-
-function renderSaved() {
-  const list  = document.getElementById('saved-list');
-  const empty = document.getElementById('saved-empty');
-  if (saved.length === 0) {
-    list.innerHTML = ''; list.appendChild(empty); empty.style.display = 'block'; return;
-  }
-  empty.style.display = 'none';
-  list.innerHTML = saved.map(s => `
-    <div class="saved-item">
-      <span class="saved-num">#${s.num}</span>
-      <span class="saved-details">${s.details}</span>
-      <span class="saved-time">${s.ts}</span>
-    </div>
-  `).join('');
-}
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 let resizeTimer;
@@ -1376,7 +1282,6 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => { render(); if(state.strokeMode==='3d') { s3resize(); s3drawFrame(); } }, 80);
 });
-document.getElementById('saved-list').appendChild(document.getElementById('saved-empty'));
 
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2192,6 +2097,10 @@ s3loop(); // runs forever; only draws when stroke mode is '3d' or title is '3d-s
   document.getElementById('body-text-input').value = body;
 })();
 render();
+
+document.addEventListener('keydown', e => {
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ e.preventDefault(); randomise(); }
+});
 </script>
 </body>
 </html>

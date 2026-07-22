@@ -178,6 +178,11 @@ html,body{
 /* Two-column download row */
 .dl-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 
+/* GIF export progress bar */
+#gif-bar-wrap{display:none;padding:6px 0 0}
+#gif-bar{height:3px;background:var(--ac);border-radius:2px;width:0%;transition:width .05s linear}
+#gif-label{font-size:10px;color:var(--muted);margin-top:4px;text-align:center}
+
 .hint{
   font-size:10px;color:var(--muted);
   text-align:center;
@@ -204,20 +209,33 @@ html,body{
 .backlink.light{color:rgba(255,255,255,.4);background:rgba(255,255,255,.09)}
 .backlink.light:hover{background:rgba(255,255,255,.17);color:rgba(255,255,255,.8)}
 </style>
+<script type="text/x-gif-worker" id="gif-worker-src">// gif.worker.js 0.2.0 - https://github.com/jnordberg/gif.js
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){var NeuQuant=require("./TypedNeuQuant.js");var LZWEncoder=require("./LZWEncoder.js");function ByteArray(){this.page=-1;this.pages=[];this.newPage()}ByteArray.pageSize=4096;ByteArray.charMap={};for(var i=0;i<256;i++)ByteArray.charMap[i]=String.fromCharCode(i);ByteArray.prototype.newPage=function(){this.pages[++this.page]=new Uint8Array(ByteArray.pageSize);this.cursor=0};ByteArray.prototype.getData=function(){var rv="";for(var p=0;p<this.pages.length;p++){for(var i=0;i<ByteArray.pageSize;i++){rv+=ByteArray.charMap[this.pages[p][i]]}}return rv};ByteArray.prototype.writeByte=function(val){if(this.cursor>=ByteArray.pageSize)this.newPage();this.pages[this.page][this.cursor++]=val};ByteArray.prototype.writeUTFBytes=function(string){for(var l=string.length,i=0;i<l;i++)this.writeByte(string.charCodeAt(i))};ByteArray.prototype.writeBytes=function(array,offset,length){for(var l=length||array.length,i=offset||0;i<l;i++)this.writeByte(array[i])};function GIFEncoder(width,height){this.width=~~width;this.height=~~height;this.transparent=null;this.transIndex=0;this.repeat=-1;this.delay=0;this.image=null;this.pixels=null;this.indexedPixels=null;this.colorDepth=null;this.colorTab=null;this.neuQuant=null;this.usedEntry=new Array;this.palSize=7;this.dispose=-1;this.firstFrame=true;this.sample=10;this.dither=false;this.globalPalette=false;this.out=new ByteArray}GIFEncoder.prototype.setDelay=function(milliseconds){this.delay=Math.round(milliseconds/10)};GIFEncoder.prototype.setFrameRate=function(fps){this.delay=Math.round(100/fps)};GIFEncoder.prototype.setDispose=function(disposalCode){if(disposalCode>=0)this.dispose=disposalCode};GIFEncoder.prototype.setRepeat=function(repeat){this.repeat=repeat};GIFEncoder.prototype.setTransparent=function(color){this.transparent=color};GIFEncoder.prototype.addFrame=function(imageData){this.image=imageData;this.colorTab=this.globalPalette&&this.globalPalette.slice?this.globalPalette:null;this.getImagePixels();this.analyzePixels();if(this.globalPalette===true)this.globalPalette=this.colorTab;if(this.firstFrame){this.writeLSD();this.writePalette();if(this.repeat>=0){this.writeNetscapeExt()}}this.writeGraphicCtrlExt();this.writeImageDesc();if(!this.firstFrame&&!this.globalPalette)this.writePalette();this.writePixels();this.firstFrame=false};GIFEncoder.prototype.finish=function(){this.out.writeByte(59)};GIFEncoder.prototype.setQuality=function(quality){if(quality<1)quality=1;this.sample=quality};GIFEncoder.prototype.setDither=function(dither){if(dither===true)dither="FloydSteinberg";this.dither=dither};GIFEncoder.prototype.setGlobalPalette=function(palette){this.globalPalette=palette};GIFEncoder.prototype.getGlobalPalette=function(){return this.globalPalette&&this.globalPalette.slice&&this.globalPalette.slice(0)||this.globalPalette};GIFEncoder.prototype.writeHeader=function(){this.out.writeUTFBytes("GIF89a")};GIFEncoder.prototype.analyzePixels=function(){if(!this.colorTab){this.neuQuant=new NeuQuant(this.pixels,this.sample);this.neuQuant.buildColormap();this.colorTab=this.neuQuant.getColormap()}if(this.dither){this.ditherPixels(this.dither.replace("-serpentine",""),this.dither.match(/-serpentine/)!==null)}else{this.indexPixels()}this.pixels=null;this.colorDepth=8;this.palSize=7;if(this.transparent!==null){this.transIndex=this.findClosest(this.transparent,true)}};GIFEncoder.prototype.indexPixels=function(imgq){var nPix=this.pixels.length/3;this.indexedPixels=new Uint8Array(nPix);var k=0;for(var j=0;j<nPix;j++){var index=this.findClosestRGB(this.pixels[k++]&255,this.pixels[k++]&255,this.pixels[k++]&255);this.usedEntry[index]=true;this.indexedPixels[j]=index}};GIFEncoder.prototype.ditherPixels=function(kernel,serpentine){var kernels={FalseFloydSteinberg:[[3/8,1,0],[3/8,0,1],[2/8,1,1]],FloydSteinberg:[[7/16,1,0],[3/16,-1,1],[5/16,0,1],[1/16,1,1]],Stucki:[[8/42,1,0],[4/42,2,0],[2/42,-2,1],[4/42,-1,1],[8/42,0,1],[4/42,1,1],[2/42,2,1],[1/42,-2,2],[2/42,-1,2],[4/42,0,2],[2/42,1,2],[1/42,2,2]],Atkinson:[[1/8,1,0],[1/8,2,0],[1/8,-1,1],[1/8,0,1],[1/8,1,1],[1/8,0,2]]};if(!kernel||!kernels[kernel]){throw"Unknown dithering kernel: "+kernel}var ds=kernels[kernel];var index=0,height=this.height,width=this.width,data=this.pixels;var direction=serpentine?-1:1;this.indexedPixels=new Uint8Array(this.pixels.length/3);for(var y=0;y<height;y++){if(serpentine)direction=direction*-1;for(var x=direction==1?0:width-1,xend=direction==1?width:0;x!==xend;x+=direction){index=y*width+x;var idx=index*3;var r1=data[idx];var g1=data[idx+1];var b1=data[idx+2];idx=this.findClosestRGB(r1,g1,b1);this.usedEntry[idx]=true;this.indexedPixels[index]=idx;idx*=3;var r2=this.colorTab[idx];var g2=this.colorTab[idx+1];var b2=this.colorTab[idx+2];var er=r1-r2;var eg=g1-g2;var eb=b1-b2;for(var i=direction==1?0:ds.length-1,end=direction==1?ds.length:0;i!==end;i+=direction){var x1=ds[i][1];var y1=ds[i][2];if(x1+x>=0&&x1+x<width&&y1+y>=0&&y1+y<height){var d=ds[i][0];idx=index+x1+y1*width;idx*=3;data[idx]=Math.max(0,Math.min(255,data[idx]+er*d));data[idx+1]=Math.max(0,Math.min(255,data[idx+1]+eg*d));data[idx+2]=Math.max(0,Math.min(255,data[idx+2]+eb*d))}}}}};GIFEncoder.prototype.findClosest=function(c,used){return this.findClosestRGB((c&16711680)>>16,(c&65280)>>8,c&255,used)};GIFEncoder.prototype.findClosestRGB=function(r,g,b,used){if(this.colorTab===null)return-1;if(this.neuQuant&&!used){return this.neuQuant.lookupRGB(r,g,b)}var c=b|g<<8|r<<16;var minpos=0;var dmin=256*256*256;var len=this.colorTab.length;for(var i=0,index=0;i<len;index++){var dr=r-(this.colorTab[i++]&255);var dg=g-(this.colorTab[i++]&255);var db=b-(this.colorTab[i++]&255);var d=dr*dr+dg*dg+db*db;if((!used||this.usedEntry[index])&&d<dmin){dmin=d;minpos=index}}return minpos};GIFEncoder.prototype.getImagePixels=function(){var w=this.width;var h=this.height;this.pixels=new Uint8Array(w*h*3);var data=this.image;var srcPos=0;var count=0;for(var i=0;i<h;i++){for(var j=0;j<w;j++){this.pixels[count++]=data[srcPos++];this.pixels[count++]=data[srcPos++];this.pixels[count++]=data[srcPos++];srcPos++}}};GIFEncoder.prototype.writeGraphicCtrlExt=function(){this.out.writeByte(33);this.out.writeByte(249);this.out.writeByte(4);var transp,disp;if(this.transparent===null){transp=0;disp=0}else{transp=1;disp=2}if(this.dispose>=0){disp=dispose&7}disp<<=2;this.out.writeByte(0|disp|0|transp);this.writeShort(this.delay);this.out.writeByte(this.transIndex);this.out.writeByte(0)};GIFEncoder.prototype.writeImageDesc=function(){this.out.writeByte(44);this.writeShort(0);this.writeShort(0);this.writeShort(this.width);this.writeShort(this.height);if(this.firstFrame||this.globalPalette){this.out.writeByte(0)}else{this.out.writeByte(128|0|0|0|this.palSize)}};GIFEncoder.prototype.writeLSD=function(){this.writeShort(this.width);this.writeShort(this.height);this.out.writeByte(128|112|0|this.palSize);this.out.writeByte(0);this.out.writeByte(0)};GIFEncoder.prototype.writeNetscapeExt=function(){this.out.writeByte(33);this.out.writeByte(255);this.out.writeByte(11);this.out.writeUTFBytes("NETSCAPE2.0");this.out.writeByte(3);this.out.writeByte(1);this.writeShort(this.repeat);this.out.writeByte(0)};GIFEncoder.prototype.writePalette=function(){this.out.writeBytes(this.colorTab);var n=3*256-this.colorTab.length;for(var i=0;i<n;i++)this.out.writeByte(0)};GIFEncoder.prototype.writeShort=function(pValue){this.out.writeByte(pValue&255);this.out.writeByte(pValue>>8&255)};GIFEncoder.prototype.writePixels=function(){var enc=new LZWEncoder(this.width,this.height,this.indexedPixels,this.colorDepth);enc.encode(this.out)};GIFEncoder.prototype.stream=function(){return this.out};module.exports=GIFEncoder},{"./LZWEncoder.js":2,"./TypedNeuQuant.js":3}],2:[function(require,module,exports){var EOF=-1;var BITS=12;var HSIZE=5003;var masks=[0,1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535];function LZWEncoder(width,height,pixels,colorDepth){var initCodeSize=Math.max(2,colorDepth);var accum=new Uint8Array(256);var htab=new Int32Array(HSIZE);var codetab=new Int32Array(HSIZE);var cur_accum,cur_bits=0;var a_count;var free_ent=0;var maxcode;var clear_flg=false;var g_init_bits,ClearCode,EOFCode;function char_out(c,outs){accum[a_count++]=c;if(a_count>=254)flush_char(outs)}function cl_block(outs){cl_hash(HSIZE);free_ent=ClearCode+2;clear_flg=true;output(ClearCode,outs)}function cl_hash(hsize){for(var i=0;i<hsize;++i)htab[i]=-1}function compress(init_bits,outs){var fcode,c,i,ent,disp,hsize_reg,hshift;g_init_bits=init_bits;clear_flg=false;n_bits=g_init_bits;maxcode=MAXCODE(n_bits);ClearCode=1<<init_bits-1;EOFCode=ClearCode+1;free_ent=ClearCode+2;a_count=0;ent=nextPixel();hshift=0;for(fcode=HSIZE;fcode<65536;fcode*=2)++hshift;hshift=8-hshift;hsize_reg=HSIZE;cl_hash(hsize_reg);output(ClearCode,outs);outer_loop:while((c=nextPixel())!=EOF){fcode=(c<<BITS)+ent;i=c<<hshift^ent;if(htab[i]===fcode){ent=codetab[i];continue}else if(htab[i]>=0){disp=hsize_reg-i;if(i===0)disp=1;do{if((i-=disp)<0)i+=hsize_reg;if(htab[i]===fcode){ent=codetab[i];continue outer_loop}}while(htab[i]>=0)}output(ent,outs);ent=c;if(free_ent<1<<BITS){codetab[i]=free_ent++;htab[i]=fcode}else{cl_block(outs)}}output(ent,outs);output(EOFCode,outs)}function encode(outs){outs.writeByte(initCodeSize);remaining=width*height;curPixel=0;compress(initCodeSize+1,outs);outs.writeByte(0)}function flush_char(outs){if(a_count>0){outs.writeByte(a_count);outs.writeBytes(accum,0,a_count);a_count=0}}function MAXCODE(n_bits){return(1<<n_bits)-1}function nextPixel(){if(remaining===0)return EOF;--remaining;var pix=pixels[curPixel++];return pix&255}function output(code,outs){cur_accum&=masks[cur_bits];if(cur_bits>0)cur_accum|=code<<cur_bits;else cur_accum=code;cur_bits+=n_bits;while(cur_bits>=8){char_out(cur_accum&255,outs);cur_accum>>=8;cur_bits-=8}if(free_ent>maxcode||clear_flg){if(clear_flg){maxcode=MAXCODE(n_bits=g_init_bits);clear_flg=false}else{++n_bits;if(n_bits==BITS)maxcode=1<<BITS;else maxcode=MAXCODE(n_bits)}}if(code==EOFCode){while(cur_bits>0){char_out(cur_accum&255,outs);cur_accum>>=8;cur_bits-=8}flush_char(outs)}}this.encode=encode}module.exports=LZWEncoder},{}],3:[function(require,module,exports){var ncycles=100;var netsize=256;var maxnetpos=netsize-1;var netbiasshift=4;var intbiasshift=16;var intbias=1<<intbiasshift;var gammashift=10;var gamma=1<<gammashift;var betashift=10;var beta=intbias>>betashift;var betagamma=intbias<<gammashift-betashift;var initrad=netsize>>3;var radiusbiasshift=6;var radiusbias=1<<radiusbiasshift;var initradius=initrad*radiusbias;var radiusdec=30;var alphabiasshift=10;var initalpha=1<<alphabiasshift;var alphadec;var radbiasshift=8;var radbias=1<<radbiasshift;var alpharadbshift=alphabiasshift+radbiasshift;var alpharadbias=1<<alpharadbshift;var prime1=499;var prime2=491;var prime3=487;var prime4=503;var minpicturebytes=3*prime4;function NeuQuant(pixels,samplefac){var network;var netindex;var bias;var freq;var radpower;function init(){network=[];netindex=new Int32Array(256);bias=new Int32Array(netsize);freq=new Int32Array(netsize);radpower=new Int32Array(netsize>>3);var i,v;for(i=0;i<netsize;i++){v=(i<<netbiasshift+8)/netsize;network[i]=new Float64Array([v,v,v,0]);freq[i]=intbias/netsize;bias[i]=0}}function unbiasnet(){for(var i=0;i<netsize;i++){network[i][0]>>=netbiasshift;network[i][1]>>=netbiasshift;network[i][2]>>=netbiasshift;network[i][3]=i}}function altersingle(alpha,i,b,g,r){network[i][0]-=alpha*(network[i][0]-b)/initalpha;network[i][1]-=alpha*(network[i][1]-g)/initalpha;network[i][2]-=alpha*(network[i][2]-r)/initalpha}function alterneigh(radius,i,b,g,r){var lo=Math.abs(i-radius);var hi=Math.min(i+radius,netsize);var j=i+1;var k=i-1;var m=1;var p,a;while(j<hi||k>lo){a=radpower[m++];if(j<hi){p=network[j++];p[0]-=a*(p[0]-b)/alpharadbias;p[1]-=a*(p[1]-g)/alpharadbias;p[2]-=a*(p[2]-r)/alpharadbias}if(k>lo){p=network[k--];p[0]-=a*(p[0]-b)/alpharadbias;p[1]-=a*(p[1]-g)/alpharadbias;p[2]-=a*(p[2]-r)/alpharadbias}}}function contest(b,g,r){var bestd=~(1<<31);var bestbiasd=bestd;var bestpos=-1;var bestbiaspos=bestpos;var i,n,dist,biasdist,betafreq;for(i=0;i<netsize;i++){n=network[i];dist=Math.abs(n[0]-b)+Math.abs(n[1]-g)+Math.abs(n[2]-r);if(dist<bestd){bestd=dist;bestpos=i}biasdist=dist-(bias[i]>>intbiasshift-netbiasshift);if(biasdist<bestbiasd){bestbiasd=biasdist;bestbiaspos=i}betafreq=freq[i]>>betashift;freq[i]-=betafreq;bias[i]+=betafreq<<gammashift}freq[bestpos]+=beta;bias[bestpos]-=betagamma;return bestbiaspos}function inxbuild(){var i,j,p,q,smallpos,smallval,previouscol=0,startpos=0;for(i=0;i<netsize;i++){p=network[i];smallpos=i;smallval=p[1];for(j=i+1;j<netsize;j++){q=network[j];if(q[1]<smallval){smallpos=j;smallval=q[1]}}q=network[smallpos];if(i!=smallpos){j=q[0];q[0]=p[0];p[0]=j;j=q[1];q[1]=p[1];p[1]=j;j=q[2];q[2]=p[2];p[2]=j;j=q[3];q[3]=p[3];p[3]=j}if(smallval!=previouscol){netindex[previouscol]=startpos+i>>1;for(j=previouscol+1;j<smallval;j++)netindex[j]=i;previouscol=smallval;startpos=i}}netindex[previouscol]=startpos+maxnetpos>>1;for(j=previouscol+1;j<256;j++)netindex[j]=maxnetpos}function inxsearch(b,g,r){var a,p,dist;var bestd=1e3;var best=-1;var i=netindex[g];var j=i-1;while(i<netsize||j>=0){if(i<netsize){p=network[i];dist=p[1]-g;if(dist>=bestd)i=netsize;else{i++;if(dist<0)dist=-dist;a=p[0]-b;if(a<0)a=-a;dist+=a;if(dist<bestd){a=p[2]-r;if(a<0)a=-a;dist+=a;if(dist<bestd){bestd=dist;best=p[3]}}}}if(j>=0){p=network[j];dist=g-p[1];if(dist>=bestd)j=-1;else{j--;if(dist<0)dist=-dist;a=p[0]-b;if(a<0)a=-a;dist+=a;if(dist<bestd){a=p[2]-r;if(a<0)a=-a;dist+=a;if(dist<bestd){bestd=dist;best=p[3]}}}}}return best}function learn(){var i;var lengthcount=pixels.length;var alphadec=30+(samplefac-1)/3;var samplepixels=lengthcount/(3*samplefac);var delta=~~(samplepixels/ncycles);var alpha=initalpha;var radius=initradius;var rad=radius>>radiusbiasshift;if(rad<=1)rad=0;for(i=0;i<rad;i++)radpower[i]=alpha*((rad*rad-i*i)*radbias/(rad*rad));var step;if(lengthcount<minpicturebytes){samplefac=1;step=3}else if(lengthcount%prime1!==0){step=3*prime1}else if(lengthcount%prime2!==0){step=3*prime2}else if(lengthcount%prime3!==0){step=3*prime3}else{step=3*prime4}var b,g,r,j;var pix=0;i=0;while(i<samplepixels){b=(pixels[pix]&255)<<netbiasshift;g=(pixels[pix+1]&255)<<netbiasshift;r=(pixels[pix+2]&255)<<netbiasshift;j=contest(b,g,r);altersingle(alpha,j,b,g,r);if(rad!==0)alterneigh(rad,j,b,g,r);pix+=step;if(pix>=lengthcount)pix-=lengthcount;i++;if(delta===0)delta=1;if(i%delta===0){alpha-=alpha/alphadec;radius-=radius/radiusdec;rad=radius>>radiusbiasshift;if(rad<=1)rad=0;for(j=0;j<rad;j++)radpower[j]=alpha*((rad*rad-j*j)*radbias/(rad*rad))}}}function buildColormap(){init();learn();unbiasnet();inxbuild()}this.buildColormap=buildColormap;function getColormap(){var map=[];var index=[];for(var i=0;i<netsize;i++)index[network[i][3]]=i;var k=0;for(var l=0;l<netsize;l++){var j=index[l];map[k++]=network[j][0];map[k++]=network[j][1];map[k++]=network[j][2]}return map}this.getColormap=getColormap;this.lookupRGB=inxsearch}module.exports=NeuQuant},{}],4:[function(require,module,exports){var GIFEncoder,renderFrame;GIFEncoder=require("./GIFEncoder.js");renderFrame=function(frame){var encoder,page,stream,transfer;encoder=new GIFEncoder(frame.width,frame.height);if(frame.index===0){encoder.writeHeader()}else{encoder.firstFrame=false}encoder.setTransparent(frame.transparent);encoder.setRepeat(frame.repeat);encoder.setDelay(frame.delay);encoder.setQuality(frame.quality);encoder.setDither(frame.dither);encoder.setGlobalPalette(frame.globalPalette);encoder.addFrame(frame.data);if(frame.last){encoder.finish()}if(frame.globalPalette===true){frame.globalPalette=encoder.getGlobalPalette()}stream=encoder.stream();frame.data=stream.pages;frame.cursor=stream.cursor;frame.pageSize=stream.constructor.pageSize;if(frame.canTransfer){transfer=function(){var i,len,ref,results;ref=frame.data;results=[];for(i=0,len=ref.length;i<len;i++){page=ref[i];results.push(page.buffer)}return results}();return self.postMessage(frame,transfer)}else{return self.postMessage(frame)}};self.onmessage=function(event){return renderFrame(event.data)}},{"./GIFEncoder.js":1}]},{},[4]);
+//# sourceMappingURL=gif.worker.js.map
+</script>
 </head>
 <body>
 <div class="app">
 <aside id="panel">
   <div class="plogo">
-    <div class="w">Gravity Sketch</div>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="w">Gravity Sketch</div>
+      <a href="./index.html"
+         style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+                color:var(--muted);text-decoration:none;border:1px solid var(--muted);
+                border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
+         onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
+        ← All Tools
+      </a>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px">
       <div class="s">3D Stroke Generator</div>
-      <a href="http://localhost:9090/gravity-sketch-brand-explorer.html"
+      <a href="./gravity-sketch-brand-explorer.html"
          style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
                 color:var(--ac,#6B47DC);text-decoration:none;border:1px solid var(--ac,#6B47DC);
                 border-radius:20px;padding:2px 8px;white-space:nowrap;opacity:.8"
          onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.8">
-        ← Brand Explorer
+        Brand Explorer →
       </a>
     </div>
   </div>
@@ -264,14 +282,62 @@ html,body{
   <!-- ── STYLE ──────────────────────────────────────── -->
   <div class="sec">
     <div class="sl">Style</div>
-    <div class="br">
-      <button class="cb active" data-g="style" data-v="organic" onclick="pick(this)">Organic</button>
-      <button class="cb"        data-g="style" data-v="flowing" onclick="pick(this)">Flowing</button>
-      <button class="cb"        data-g="style" data-v="text"    onclick="pick(this)">Script</button>
-    </div>
+    <select id="style-sel" onchange="pickStyle(this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;outline:none">
+      <option value="organic">Organic</option>
+      <option value="flowing">Flowing</option>
+      <option value="text">Script</option>
+      <option value="annotations">Annotations</option>
+      <option value="objects">Objects</option>
+    </select>
   </div>
   <div class="sec" id="text-sec" style="display:none;padding-top:8px">
     <input type="text" id="text-input" class="text-field" value="Gravity Sketch" placeholder="Type here…" oninput="generate()">
+    <div style="margin-top:6px">
+      <div class="lbl" style="margin-bottom:4px">Font</div>
+      <select id="font-sel" onchange="pickFont(this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;outline:none">
+        <option value="cursive">Cursive (original)</option>
+        <option value="scriptc">Script Medium</option>
+        <option value="scripts">Script Thin</option>
+      </select>
+    </div>
+  </div>
+  <div class="sec" id="ann-sec" style="display:none;padding-top:8px">
+    <div class="br">
+      <button class="cb active" data-g="obj" data-v="glb-1"  onclick="pickObj(this)">1</button>
+      <button class="cb"        data-g="obj" data-v="glb-2"  onclick="pickObj(this)">2</button>
+      <button class="cb"        data-g="obj" data-v="glb-3"  onclick="pickObj(this)">3</button>
+      <button class="cb"        data-g="obj" data-v="glb-4"  onclick="pickObj(this)">4</button>
+      <button class="cb"        data-g="obj" data-v="glb-5"  onclick="pickObj(this)">5</button>
+      <button class="cb"        data-g="obj" data-v="glb-6"  onclick="pickObj(this)">6</button>
+      <button class="cb"        data-g="obj" data-v="glb-17" onclick="pickObj(this)">17</button>
+      <button class="cb"        data-g="obj" data-v="glb-18" onclick="pickObj(this)">18</button>
+      <button class="cb"        data-g="obj" data-v="glb-19" onclick="pickObj(this)">19</button>
+      <button class="cb"        data-g="obj" data-v="glb-20" onclick="pickObj(this)">20</button>
+      <button class="cb"        data-g="obj" data-v="glb-21" onclick="pickObj(this)">21</button>
+      <button class="cb"        data-g="obj" data-v="glb-22" onclick="pickObj(this)">22</button>
+      <button class="cb"        data-g="obj" data-v="glb-23" onclick="pickObj(this)">23</button>
+      <button class="cb"        data-g="obj" data-v="glb-24" onclick="pickObj(this)">24</button>
+      <button class="cb"        data-g="obj" data-v="glb-25" onclick="pickObj(this)">25</button>
+    </div>
+  </div>
+  <div class="sec" id="obj-sec" style="display:none;padding-top:8px">
+    <div class="br">
+      <button class="cb active" data-g="obj" data-v="glb-7"  onclick="pickObj(this)">7</button>
+      <button class="cb"        data-g="obj" data-v="glb-8"  onclick="pickObj(this)">8</button>
+      <button class="cb"        data-g="obj" data-v="glb-9"  onclick="pickObj(this)">9</button>
+      <button class="cb"        data-g="obj" data-v="glb-10" onclick="pickObj(this)">10</button>
+      <button class="cb"        data-g="obj" data-v="glb-11" onclick="pickObj(this)">11</button>
+      <button class="cb"        data-g="obj" data-v="glb-12" onclick="pickObj(this)">12</button>
+      <button class="cb"        data-g="obj" data-v="glb-13" onclick="pickObj(this)">13</button>
+      <button class="cb"        data-g="obj" data-v="glb-14" onclick="pickObj(this)">14</button>
+      <button class="cb"        data-g="obj" data-v="glb-15" onclick="pickObj(this)">15</button>
+      <button class="cb"        data-g="obj" data-v="glb-16" onclick="pickObj(this)">16</button>
+    </div>
+  </div>
+  <div class="sec" id="wire-sec" style="display:none">
+    <div class="br">
+      <button class="cb" id="wire-btn" onclick="toggleWireframe(this)">Wireframe</button>
+    </div>
   </div>
 
   <!-- Complexity -->
@@ -284,8 +350,9 @@ html,body{
     </div>
   </div>
 
-  <!-- Tube radius -->
-  <div class="sec">
+
+  <!-- Tube radius (hidden in Objects mode) -->
+  <div class="sec" id="rad-sec">
     <div class="sl">Tube Radius</div>
     <div class="slider-row">
       <input type="range" id="rad" min="1" max="100" value="32" autocomplete="off" oninput="onRad(this)">
@@ -318,8 +385,19 @@ html,body{
   <!-- Actions -->
   <div class="sec" style="padding-bottom:4px">
     <button class="ab p" onclick="generate()">
-      Generate New <span class="kbd">⇧ ↩</span>
+      Generate New <span class="kbd">⌘ ↩</span>
     </button>
+  </div>
+  <div class="sec" id="reveal-sec">
+    <div class="dl-row">
+      <button class="ab s" id="play-btn" onclick="playReveal()">▶ Play</button>
+      <button class="ab s" id="gif-btn"  onclick="exportGIF()">↓ GIF</button>
+      <button class="ab s" id="pan-gif-btn" onclick="exportPanGIF()">↓ Pan GIF</button>
+    </div>
+    <div id="gif-bar-wrap">
+      <div id="gif-bar"></div>
+      <div id="gif-label">Encoding…</div>
+    </div>
   </div>
   <div class="sec">
     <div class="dl-row">
@@ -336,7 +414,7 @@ html,body{
 </aside>
 <div id="cw">
   <canvas id="c"></canvas>
-  <a class="backlink" id="bl" href="gravity-sketch-brand-explorer.html">← Brand Explorer</a>
+  <a class="backlink" id="bl" href="./index.html">← All Tools</a>
 </div>
 </div>
 <script>
@@ -472,6 +550,33 @@ function buildSphere(cx,cy,cz,r,slices,stacks){
       idx.push(a,b,a+1, a+1,b,b+1);
     }
   return{pos,nor,uv,idx:new Uint32Array(idx)};
+}
+
+// ── Cone geometry ─────────────────────────────────────────────────────────────
+function buildCone(bx,by,bz, tx,ty,tz, radius, sides){
+  const axis=vnrm(vsub([tx,ty,tz],[bx,by,bz]));
+  let ref=Math.abs(axis[0])<0.9?[1,0,0]:[0,1,0];
+  const n0=vnrm(vcrs(axis,ref)), b0=vnrm(vcrs(axis,n0));
+  const h=vlen(vsub([tx,ty,tz],[bx,by,bz]));
+  const sl=radius/Math.max(h,0.001), cs=Math.sqrt(Math.max(0,1-sl*sl));
+  const pos=[], nor=[], uv=[], idx=[];
+  for(let j=0;j<=sides;j++){
+    const th=j/sides*Math.PI*2, c=Math.cos(th), s=Math.sin(th);
+    const ox=c*n0[0]+s*b0[0], oy=c*n0[1]+s*b0[1], oz=c*n0[2]+s*b0[2];
+    const nx=ox*cs+axis[0]*sl, ny=oy*cs+axis[1]*sl, nz=oz*cs+axis[2]*sl;
+    pos.push(bx+radius*ox, by+radius*oy, bz+radius*oz); nor.push(nx,ny,nz); uv.push(j/sides,0);
+    pos.push(tx,ty,tz);                                   nor.push(nx,ny,nz); uv.push(j/sides,1);
+  }
+  for(let j=0;j<sides;j++) idx.push(j*2, j*2+2, j*2+1);
+  const bc=pos.length/3;
+  pos.push(bx,by,bz); nor.push(-axis[0],-axis[1],-axis[2]); uv.push(0.5,0.5);
+  for(let j=0;j<=sides;j++){
+    const th=j/sides*Math.PI*2, c=Math.cos(th), s=Math.sin(th);
+    pos.push(bx+radius*(c*n0[0]+s*b0[0]), by+radius*(c*n0[1]+s*b0[1]), bz+radius*(c*n0[2]+s*b0[2]));
+    nor.push(-axis[0],-axis[1],-axis[2]); uv.push(0.5+0.5*c,0.5+0.5*s);
+  }
+  for(let j=0;j<sides;j++) idx.push(bc, bc+1+j, bc+2+j);
+  return{pos:new Float32Array(pos), nor:new Float32Array(nor), uv:new Float32Array(uv), idx:new Uint32Array(idx)};
 }
 
 // ── Hemisphere caps ───────────────────────────────────────────────────────────
@@ -834,7 +939,8 @@ const uAoP =gl.getUniformLocation(prog,'uAoPass');
 
 // ── FBO + AO pipeline ─────────────────────────────────────────────────────────
 let fbo=null,fboTex=null,fboRb=null;
-function mkFBO(w,h){
+let fboW=1,fboH=1; // actual FBO pixel dimensions (may be 2× canvas for SSAA)
+function mkFBO(w,h){fboW=w;fboH=h;
   if(fbo){gl.deleteFramebuffer(fbo);gl.deleteTexture(fboTex);gl.deleteRenderbuffer(fboRb);}
   fboTex=gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D,fboTex);
@@ -865,6 +971,34 @@ const quadBuf=gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER,quadBuf);
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
 
+// ── Wireframe shader ──────────────────────────────────────────────────────────
+const VERT_WIRE=`attribute vec3 aPos;uniform mat4 uMVP;varying float vW;void main(){vec4 p=uMVP*vec4(aPos,1.0);vW=p.w;gl_Position=p;gl_PointSize=14.0;}`;
+const FRAG_WIRE=`precision mediump float;uniform vec4 uWireCol;uniform float uPt;uniform float uCamDist;varying float vW;void main(){float a=uWireCol.a;if(uPt>0.5){vec2 c=gl_PointCoord-0.5;if(dot(c,c)>0.25)discard;float t=clamp((vW-uCamDist+0.5)/1.0,0.0,1.0);a=mix(1.0,0.08,t);}gl_FragColor=vec4(uWireCol.rgb,a);}`;
+const wireProg=gl.createProgram();
+gl.attachShader(wireProg,compileShader(gl.VERTEX_SHADER,VERT_WIRE));
+gl.attachShader(wireProg,compileShader(gl.FRAGMENT_SHADER,FRAG_WIRE));
+gl.linkProgram(wireProg);
+const wAPos=gl.getAttribLocation(wireProg,'aPos');
+const wMVP=gl.getUniformLocation(wireProg,'uMVP');
+const wCol=gl.getUniformLocation(wireProg,'uWireCol');
+const wPt=gl.getUniformLocation(wireProg,'uPt');
+const wCamDist=gl.getUniformLocation(wireProg,'uCamDist');
+const edgeBuf=gl.createBuffer();
+let edgeCount=0, vertCount=0;
+
+function buildEdges(idx){
+  const seen=new Set();
+  const edges=[];
+  for(let i=0;i<idx.length;i+=3){
+    const a=idx[i],b=idx[i+1],c=idx[i+2];
+    [[a,b],[b,c],[a,c]].forEach(([u,v])=>{
+      const k=u<v?u*1e7+v:v*1e7+u;
+      if(!seen.has(k)){seen.add(k);edges.push(u,v);}
+    });
+  }
+  return new Uint32Array(edges);
+}
+
 const posBuf=gl.createBuffer();
 const norBuf=gl.createBuffer();
 const uvBuf =gl.createBuffer();
@@ -884,6 +1018,10 @@ function uploadGeom(geo){
   }
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idxData,gl.STATIC_DRAW);
   idxCount=geo.idx.length;
+  const edges=buildEdges(geo.idx);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,edgeBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,edges,gl.STATIC_DRAW);
+  edgeCount=edges.length;
+  vertCount=geo.pos.length/3;
 }
 
 // ── Mat4 rotation helpers ─────────────────────────────────────────────────────
@@ -903,7 +1041,7 @@ function m4translate(x,y){
 // ── State ─────────────────────────────────────────────────────────────────────
 const state={
   style:'organic', color:'green', cx:2, lt:'studio',
-  bg:'#92F5B5', radius:0.020, opacity:1.0
+  bg:'#92F5B5', radius:0.020, opacity:1.0, obj:'glb-1', wireframe:false
 };
 
 // Arcball: store model rotation as accumulated 4×4 matrix
@@ -944,7 +1082,7 @@ window.addEventListener('mouseup',()=>{
   canvas.style.cursor='default';
 });
 window.addEventListener('keydown',e=>{
-  if(e.key==='Enter' && e.shiftKey){ generate(); e.preventDefault(); }
+  if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ generate(); e.preventDefault(); }
   else if(e.key==='Enter'){ turntable=!turntable; e.preventDefault(); }
 });
 canvas.addEventListener('wheel',e=>{
@@ -963,8 +1101,9 @@ function parseHershey(data){
   const recs=[];
   for(const ln of lines){
     if(!ln.trim()) continue;
-    if(ln[0]>='0'&&ln[0]<='9') recs.push(ln);
-    else if(recs.length>0) recs[recs.length-1]+=ln;
+    const tln=ln.trimStart();
+    if(tln[0]>='0'&&tln[0]<='9') recs.push(tln);
+    else if(recs.length>0) recs[recs.length-1]+=tln;
   }
   for(const rec of recs){
     let i=0;
@@ -1009,10 +1148,38 @@ function makeBridge(p0,t0,p1,t1){
   return Array.from({length:n-1},(_,i)=>cubicBezPt(p0,c0,c1,p1,(i+1)/n));
 }
 
-async function loadHershey(){
+// Letters whose last stroke should NOT bridge into the next letter
+const SCRIPT_BREAK_AFTER=new Set(['P','B','D','F','O','Q']);
+
+let currentFont='cursive';
+async function loadHershey(font){
+  font=font||currentFont;
+  currentFont=font;
   try{
-    const r=await fetch('assets/cursive.jhf');
+    const r=await fetch(`assets/${font}.jhf`);
     hersheyGlyphs=parseHershey(await r.text());
+    // Apply overrides only to the original cursive font whose A and i are poorly designed
+    if(font==='cursive'){
+      hersheyGlyphs['A'.charCodeAt(0)-32]={
+        advance:20,
+        strokes:[[
+          // User SVG A resampled: feet at y=-9 (matches font foot level), peak y=12 (cap height), exit y=-4
+          [-9.7,-9],[-8.4,-5.6],[-7.2,-2.1],[-6,1.4],[-4.8,4.9],[-3.4,8.3],[-1.3,11.2],
+          [1.5,10],[2.8,6.6],[3.7,3],[4.4,-0.7],[4.9,-4.4],[5.1,-8.1],[2.8,-9.2],
+          [-0.2,-7.6],[-3,-5.6],[-5.7,-3.3],[-8,-0.6],[-8.2,2.8],[-5.2,3.9],
+          [-2.1,2.6],[0.8,0.8],[3.7,-1],[6.8,-2.5],[10,-4]
+        ]]
+      };
+      hersheyGlyphs['i'.charCodeAt(0)-32]={
+        advance:10,
+        strokes:[
+          [[0,5],[0.5,6],[1,5],[0.5,4],[0,5]],  // dot
+          [[-3,-4],[-2,-2],[-0.5,0],[0.5,-0.5],[0,-3],[-1,-6],[0,-8],[2,-8],[3.5,-6],[5,-4]]
+        ]
+      };
+      // Keep m at its original font advance (16); no stroke override needed
+      hersheyGlyphs['m'.charCodeAt(0)-32].advance = 16;
+    }
     if(state.style==='text') generate();
   }catch(e){console.warn('Hershey load failed',e);}
 }
@@ -1040,6 +1207,7 @@ function genText(text,cx){
     if(ch===' '){totalAdv+=9;continue;}
     const gi=ch.charCodeAt(0)-32;
     totalAdv+=(gi>=0&&gi<hersheyGlyphs.length)?(hersheyGlyphs[gi].advance+3):9;
+    if(SCRIPT_BREAK_AFTER.has(ch)) totalAdv-=12;
   }
   if(!totalAdv) return null;
   const targetW=[1.2,1.6,2.1][cx-1];
@@ -1054,7 +1222,8 @@ function genText(text,cx){
     if(!word){cursorX+=9*scale;continue;}
 
     // Classify strokes: main word tube / floating spheres (dots) / separate crossbars
-    const mainStrokes=[], dotStrokes=[], crossStrokes=[];
+    // strokeGroups: each group is a continuous connected tube; break after certain letters
+    const strokeGroups=[[]], dotStrokes=[], crossStrokes=[];
     for(const ch of word){
       const gi=ch.charCodeAt(0)-32;
       if(gi<0||gi>=hersheyGlyphs.length){cursorX+=6*scale;letterIdx++;continue;}
@@ -1076,18 +1245,24 @@ function genText(text,cx){
         if(rawSpan<5.5&&stroke.length<=6){
           // Dot / apostrophe → sphere
           dotStrokes.push(wpts.map(p=>[p[0],p[1]-2*scale,p[2]+0.04]));
+        } else if(ch==='A'&&stroke.length<=3&&dy<0.5){
+          // A crossbar — independent tube, no bridge, no y-offset
+          crossStrokes.push(wpts);
         } else if((ch==='t'||ch==='f')&&dx>3*(dy+0.5)&&rawSpan>3){
           // t-bar / f-bar only — avoid misclassifying connection strokes on other letters
           crossStrokes.push(wpts.map(p=>[p[0],p[1]-1.5*scale,p[2]]));
         } else {
-          mainStrokes.push(wpts);
+          strokeGroups[strokeGroups.length-1].push(wpts);
         }
       }
+      // Break connection after closed-bowl capitals that don't flow into the next letter
+      if(SCRIPT_BREAK_AFTER.has(ch)){ strokeGroups.push([]); cursorX-=12*scale; }
       cursorX+=(glyph.advance+3)*scale;
       letterIdx++;
     }
 
-    if(mainStrokes.length){
+    function buildStrokeGroup(mainStrokes){
+      if(!mainStrokes.length) return;
       const allCtrl=[...mainStrokes[0]];
       for(let si=1;si<mainStrokes.length;si++){
         const prev=mainStrokes[si-1], curr=mainStrokes[si];
@@ -1125,6 +1300,7 @@ function genText(text,cx){
         }
       }
     }
+    for(const grp of strokeGroups) buildStrokeGroup(grp);
 
     // Each dot / apostrophe → sphere at the centroid of the stroke points
     for(const ds of dotStrokes){
@@ -1159,9 +1335,232 @@ function genText(text,cx){
   return mergeGeometries(allGeos);
 }
 
+// ── GLB asset loader ──────────────────────────────────────────────────────────
+const ANNO_GEOS = new Array(25).fill(null); // filled by loadAnnotationAssets()
+
+// Extract flat arrays from one GLB buffer, applying per-node TRS transforms.
+function parseGLBRaw(buffer){
+  const view = new DataView(buffer);
+  const jsonLen = view.getUint32(12, true);
+  const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buffer, 20, jsonLen)));
+  const binStart = 20 + jsonLen + 8;
+
+  function getAcc(idx){
+    const acc=json.accessors[idx], bv=json.bufferViews[acc.bufferView];
+    const off=binStart+(bv.byteOffset||0)+(acc.byteOffset||0);
+    const stride=bv.byteStride||0;
+    const comps={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[acc.type];
+    const bytes={5120:1,5121:1,5122:2,5123:2,5125:4,5126:4}[acc.componentType];
+    const Ctor={5120:Int8Array,5121:Uint8Array,5122:Int16Array,5123:Uint16Array,5125:Uint32Array,5126:Float32Array}[acc.componentType];
+    const actual=stride||comps*bytes, out=[];
+    for(let i=0;i<acc.count;i++){
+      const row=[];
+      for(let c=0;c<comps;c++) row.push(new Ctor(buffer,off+i*actual+c*bytes,1)[0]);
+      out.push(comps===1?row[0]:row);
+    }
+    return out;
+  }
+
+  function qRot(q,v){
+    const[qx,qy,qz,qw]=q,[vx,vy,vz]=v;
+    const tx=2*(qy*vz-qz*vy),ty=2*(qz*vx-qx*vz),tz=2*(qx*vy-qy*vx);
+    return[vx+qw*tx+qy*tz-qz*ty,vy+qw*ty+qz*tx-qx*tz,vz+qw*tz+qx*ty-qy*tx];
+  }
+
+  const xfMap={};
+  for(const node of (json.nodes||[])){
+    if(node.mesh!==undefined) xfMap[node.mesh]={
+      t:node.translation||[0,0,0], r:node.rotation||[0,0,0,1], s:node.scale||[1,1,1]
+    };
+  }
+
+  const allPos=[],allNor=[],allUv=[],allIdx=[];
+  let vOff=0;
+  json.meshes.forEach((mesh,mi)=>{
+    const xf=xfMap[mi]||{t:[0,0,0],r:[0,0,0,1],s:[1,1,1]};
+    for(const prim of mesh.primitives){
+      const pos=getAcc(prim.attributes.POSITION);
+      const nor=getAcc(prim.attributes.NORMAL);
+      const uv =getAcc(prim.attributes.TEXCOORD_0);
+      const idx=getAcc(prim.indices);
+      for(const p of pos){
+        const sp=[p[0]*xf.s[0],p[1]*xf.s[1],p[2]*xf.s[2]],rp=qRot(xf.r,sp);
+        allPos.push(rp[0]+xf.t[0],rp[1]+xf.t[1],rp[2]+xf.t[2]);
+      }
+      for(const n of nor){
+        const rn=qRot(xf.r,n),nl=Math.sqrt(rn[0]*rn[0]+rn[1]*rn[1]+rn[2]*rn[2])||1;
+        allNor.push(rn[0]/nl,rn[1]/nl,rn[2]/nl);
+      }
+      for(const t of uv) allUv.push(t[0],t[1]);
+      for(const ix of idx) allIdx.push(ix+vOff);
+      vOff+=pos.length;
+    }
+  });
+  return {allPos,allNor,allUv,allIdx};
+}
+
+// Normalize + compute per-vertex rLocal + compute taper weights from boundary BFS.
+function finalizeGeo(allPos,allNor,allUv,allIdx){
+  // Normalise: centre + scale longest axis to 1.6 units
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,minZ=Infinity,maxZ=-Infinity;
+  for(let i=0;i<allPos.length;i+=3){
+    minX=Math.min(minX,allPos[i]);  maxX=Math.max(maxX,allPos[i]);
+    minY=Math.min(minY,allPos[i+1]);maxY=Math.max(maxY,allPos[i+1]);
+    minZ=Math.min(minZ,allPos[i+2]);maxZ=Math.max(maxZ,allPos[i+2]);
+  }
+  const cx=(minX+maxX)/2,cy=(minY+maxY)/2,cz=(minZ+maxZ)/2;
+  const sc=1.6/Math.max(maxX-minX,maxY-minY,maxZ-minZ,1e-6);
+  for(let i=0;i<allPos.length;i+=3){
+    allPos[i]=(allPos[i]-cx)*sc; allPos[i+1]=(allPos[i+1]-cy)*sc; allPos[i+2]=(allPos[i+2]-cz)*sc;
+  }
+
+  // Bake +90° Y rotation: shapes are in the YZ plane (thin X); rotate to XY plane so they face viewer
+  // (x,y,z) → (z, y, -x) for both positions and normals
+  for(let i=0;i<allPos.length;i+=3){const x=allPos[i],z=allPos[i+2];allPos[i]=z;allPos[i+2]=-x;}
+  for(let i=0;i<allNor.length;i+=3){const x=allNor[i],z=allNor[i+2];allNor[i]=z;allNor[i+2]=-x;}
+
+  const V=allPos.length/3;
+
+  // Per-vertex local tube radius: |Δpos|/|Δnor| on circumferential edges
+  const rLocSum=new Float32Array(V),rLocCnt=new Float32Array(V);
+  const rMax=0.6;
+  for(let t=0;t<allIdx.length;t+=3){
+    for(const[a,b]of[[allIdx[t],allIdx[t+1]],[allIdx[t+1],allIdx[t+2]],[allIdx[t],allIdx[t+2]]]){
+      const px=allPos[a*3]-allPos[b*3],py=allPos[a*3+1]-allPos[b*3+1],pz=allPos[a*3+2]-allPos[b*3+2];
+      const nx=allNor[a*3]-allNor[b*3],ny=allNor[a*3+1]-allNor[b*3+1],nz=allNor[a*3+2]-allNor[b*3+2];
+      const dn2=nx*nx+ny*ny+nz*nz;
+      if(dn2>0.10){
+        const r=Math.sqrt((px*px+py*py+pz*pz)/dn2);
+        if(r<rMax){rLocSum[a]+=r;rLocCnt[a]++;rLocSum[b]+=r;rLocCnt[b]++;}
+      }
+    }
+  }
+  const rLocal=new Float32Array(V);
+  for(let i=0;i<V;i++) rLocal[i]=rLocCnt[i]>0?rLocSum[i]/rLocCnt[i]:0;
+  // rGlobal: lower decile of rLocal estimates (circumferential edges give the true radius;
+  // diagonal edges inflate it ~41%, so lower decile reliably picks the un-inflated value)
+  const rSamples=[];
+  for(let i=0;i<V;i++) if(rLocCnt[i]>0) rSamples.push(rLocal[i]);
+  rSamples.sort((a,b)=>a-b);
+  const rGlobal=rSamples.length?rSamples[Math.floor(rSamples.length*0.10)]:0.08;
+
+  // Taper stroke tips to a point at all radii.
+  // Iterative BFS: start with the graph-diameter pair (epA, epB), then keep
+  // finding the vertex farthest from all known endpoints and add it (plus its
+  // own diameter partner) until nothing remains farther than halfDiam.
+  // halfDiam stops arc-midpoints from being added as false endpoints.
+  const TAPER_HOPS=12;
+  const adjCap=Array.from({length:V},()=>[]);
+  for(let t=0;t<allIdx.length;t+=3){
+    const a=allIdx[t],b=allIdx[t+1],c=allIdx[t+2];
+    adjCap[a].push(b,c);adjCap[b].push(a,c);adjCap[c].push(a,b);
+  }
+  function bfsCapH(s){
+    const d=new Int32Array(V).fill(-1);d[s]=0;
+    const q=[s];let qi=0,far=s,mx=0;
+    while(qi<q.length){const v=q[qi++];for(const nb of adjCap[v])if(d[nb]<0){d[nb]=d[v]+1;q.push(nb);if(d[nb]>mx){mx=d[nb];far=nb;}}}
+    return{d,far,mx};
+  }
+  const {far:epA}=bfsCapH(0);
+  const {d:dA,far:epB,mx:diam}=bfsCapH(epA);
+  const {d:dB}=bfsCapH(epB);
+  const allEndDists=[dA,dB];
+  // halfDiam: genuine branch endpoints are farther than this from all known endpoints;
+  // arc midpoints are at exactly halfDiam and are excluded by the strict > check.
+  const halfDiam=Math.max(diam/2, TAPER_HOPS*2);
+  for(let pass=0;pass<30;pass++){
+    let maxMinD=0,bestSeed=-1;
+    for(let i=0;i<V;i++){
+      let minD=Infinity;
+      for(const d of allEndDists) if(d[i]>=0) minD=Math.min(minD,d[i]);
+      if(minD===Infinity) minD=99999; // disconnected component — always add
+      if(minD>maxMinD){maxMinD=minD;bestSeed=i;}
+    }
+    if(maxMinD<=halfDiam||bestSeed<0) break;
+    const {d:dNew,far:epNew}=bfsCapH(bestSeed);
+    allEndDists.push(dNew,bfsCapH(epNew).d);
+  }
+  const taper=new Float32Array(V);
+  for(let i=0;i<V;i++){
+    let minD=Infinity;
+    for(const d of allEndDists) if(d[i]>=0&&d[i]<minD) minD=d[i];
+    taper[i]=minD===Infinity?1:Math.min(1,minD/TAPER_HOPS);
+  }
+
+  return{pos:new Float32Array(allPos),nor:new Float32Array(allNor),
+         uv:new Float32Array(allUv),idx:new Uint32Array(allIdx),rLocal,rGlobal,taper};
+}
+
+function parseGLBGeo(buffer){
+  const{allPos,allNor,allUv,allIdx}=parseGLBRaw(buffer);
+  return finalizeGeo(allPos,allNor,allUv,allIdx);
+}
+
+async function loadAnnotationAssets(){
+  // Shape 1 is split across two GLB files — merge them before finalizing
+  const load=url=>fetch(url).then(r=>r.arrayBuffer());
+  // Shape 1 = u-1_2 only (the circle); u-1_1 is a separate squiggle stroke, not used here
+  await load('assets/Annotation_assets-u-1_2.glb')
+    .then(buf=>{ANNO_GEOS[0]=parseGLBGeo(buf);})
+    .catch(e=>console.warn('GLB u-1_2 load failed',e));
+  // Shapes 2–6
+  await Promise.all([2,3,4,5,6].map((n,i)=>
+    load(`assets/Annotation_assets-u-${n}.glb`)
+      .then(buf=>{ANNO_GEOS[i+1]=parseGLBGeo(buf);})
+      .catch(e=>console.warn(`GLB u-${n} load failed`,e))
+  ));
+  // Shapes 7–16 (new assets)
+  await Promise.all([7,8,9,10,11,12,13,14,15,16].map((n,i)=>
+    load(`assets/Annotation_assets-${n}.glb`)
+      .then(buf=>{ANNO_GEOS[i+6]=parseGLBGeo(buf);})
+      .catch(e=>console.warn(`GLB ${n} load failed`,e))
+  ));
+  // Shapes 17–25 (GS_Download assets 0001–0009)
+  await Promise.all([1,2,3,4,5,6,7,8,9].map((n,i)=>
+    load(`assets/2026-07-13_Untitled_13-00-000${n}.glb`)
+      .then(buf=>{ANNO_GEOS[i+16]=parseGLBGeo(buf);})
+      .catch(e=>console.warn(`GLB 000${n} load failed`,e))
+  ));
+  if(state.style==='objects'||state.style==='annotations') generate();
+}
+
+// ── Annotation shapes ─────────────────────────────────────────────────────────
+function makeArrow(r){
+  const geos=[], sides=16;
+  const ctrl=[[-0.72,0,0.02],[-0.45,0.14,0.01],[-0.1,0.04,0],[0.22,-0.02,-0.01],[0.44,0.04,0]];
+  const{pts,tans}=buildSpline(ctrl,80,false);
+  const frames=buildFrames(pts,tans);
+  geos.push(buildTube(pts,frames,r,sides));
+  const t0=frames[0].t, off=r*0.15;
+  geos.push(buildSphere(pts[0][0]+t0[0]*off,pts[0][1]+t0[1]*off,pts[0][2]+t0[2]*off,r,12,8));
+  const lastP=pts[pts.length-1], lastT=tans[tans.length-1];
+  const cR=r*2.8, cH=cR*2.2;
+  geos.push(buildCone(lastP[0],lastP[1],lastP[2],
+    lastP[0]+lastT[0]*cH, lastP[1]+lastT[1]*cH, lastP[2]+lastT[2]*cH, cR, sides));
+  return mergeGeometries(geos);
+}
+
+function genAnnotation(type){
+  if(type==='arrow') return makeArrow(state.radius);
+  const n=parseInt(type.replace('glb-',''))-1;
+  const base=ANNO_GEOS[n];
+  if(!base) return null;
+  return base;
+}
+
 // ── Generate ──────────────────────────────────────────────────────────────────
 function generate(){
   const cx=parseInt(state.cx);
+
+  if(state.style==='objects'||state.style==='annotations'){
+    const geo=genAnnotation(state.obj);
+    if(geo){
+      uploadGeom(geo);
+      orbit.dist=3.8; panX=0; panY=0;
+      modelMat=m4mul(m4rotY(-0.4),m4rotX(0.18));
+    }
+    return;
+  }
 
   if(state.style==='text'){
     const text=(document.getElementById('text-input')||{value:'Gravity Sketch'}).value||'Gravity Sketch';
@@ -1209,7 +1608,7 @@ function resize(){
   const w=canvas.clientWidth,h=canvas.clientHeight;
   canvas.width=w*dpr; canvas.height=h*dpr;
   gl.viewport(0,0,canvas.width,canvas.height);
-  mkFBO(canvas.width,canvas.height);
+  mkFBO(canvas.width*2,canvas.height*2); // 2× SSAA — downsampled by AO blit
 }
 window.addEventListener('resize',()=>{resize();draw()});
 
@@ -1224,8 +1623,10 @@ function setAttribs(){
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf);
 }
 
+let revealCount=-1; // -1 = draw all; >=0 = draw this many indices
 function drawMesh(){
-  gl.drawElements(gl.TRIANGLES,idxCount,idxType,0);
+  const count=revealCount>=0?Math.min(revealCount,idxCount):idxCount;
+  if(count>0) gl.drawElements(gl.TRIANGLES,count,idxType,0);
 }
 
 // Render the 3D scene. aoMode=true: encode linear depth in alpha for the AO pass.
@@ -1262,19 +1663,43 @@ function renderScene(aoMode){
 
   gl.disable(gl.BLEND); gl.depthMask(true);
   drawMesh();
+
+  return MVP;
+}
+
+function drawWireframe(MVP){
+  if(!state.wireframe || !edgeCount) return;
+  gl.enable(gl.DEPTH_TEST);
+  gl.useProgram(wireProg);
+  gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);
+  gl.vertexAttribPointer(wAPos,3,gl.FLOAT,false,0,0);
+  gl.enableVertexAttribArray(wAPos);
+  gl.uniformMatrix4fv(wMVP,false,MVP);
+  gl.uniform1f(wCamDist,orbit.dist);
+  gl.uniform4f(wCol,0,0,0,1.0);
+  gl.depthFunc(gl.LEQUAL);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,edgeBuf);
+  gl.uniform1f(wPt,0.0);
+  gl.drawElements(gl.LINES,edgeCount,extUint?gl.UNSIGNED_INT:gl.UNSIGNED_SHORT,0);
+  gl.uniform1f(wPt,1.0);
+  gl.drawArrays(gl.POINTS,0,vertCount);
+  gl.disable(gl.BLEND);
+  gl.depthFunc(gl.LESS);
 }
 
 function draw(){
   const w=canvas.width,h=canvas.height;
 
   if(fbo){
-    // Pass 1: render scene to FBO with depth encoded in alpha
+    // Pass 1: render scene to FBO at 2× resolution (SSAA)
     gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);
-    renderScene(true);
+    gl.viewport(0,0,fboW,fboH);
+    const mvp=renderScene(true);
     gl.bindFramebuffer(gl.FRAMEBUFFER,null);
 
-    // Pass 2: AO composite to screen
-    // Pre-clear with background so transparent bg pixels show through the quad
+    // Pass 2: AO composite to screen at canvas resolution (downsamples 2× FBO → AA)
+    gl.viewport(0,0,w,h);
     if(state.bg==='transparent') gl.clearColor(0,0,0,0);
     else{ const bg=hexRgb(state.bg); gl.clearColor(bg[0],bg[1],bg[2],1); }
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1288,11 +1713,27 @@ function draw(){
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D,fboTex);
     gl.uniform1i(uSceneTex,0);
-    gl.uniform2f(uInvRes,1/w,1/h);
+    gl.uniform2f(uInvRes,1/fboW,1/fboH); // AO kernel uses FBO texel size
     gl.drawArrays(gl.TRIANGLES,0,6);
     gl.disable(gl.BLEND);
+    // Pass 3: prime screen depth buffer, then draw wireframe on top
+    if(state.wireframe && edgeCount){
+      gl.enable(gl.DEPTH_TEST); gl.clear(gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(wireProg);
+      gl.bindBuffer(gl.ARRAY_BUFFER,posBuf);
+      gl.vertexAttribPointer(wAPos,3,gl.FLOAT,false,0,0);
+      gl.enableVertexAttribArray(wAPos);
+      gl.uniformMatrix4fv(wMVP,false,mvp);
+      gl.uniform4f(wCol,0,0,0,0);
+      gl.colorMask(false,false,false,false);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf);
+      gl.drawElements(gl.TRIANGLES,idxCount,idxType,0);
+      gl.colorMask(true,true,true,true);
+      drawWireframe(mvp);
+    }
   } else {
-    renderScene(false);
+    const mvp=renderScene(false);
+    if(state.wireframe) drawWireframe(mvp);
   }
 }
 
@@ -1336,14 +1777,27 @@ function applyMarbleSwatches(){
 function isDark(hex){const[r,g,b]=hexRgb(hex);return r*.299+g*.587+b*.114<.5}
 
 // ── UI handlers ───────────────────────────────────────────────────────────────
+function applyStyle(v){
+  state.style=v;
+  document.getElementById('style-sel').value=v;
+  const isShapes=v==='annotations'||v==='objects';
+  const isStroke=v==='organic'||v==='flowing'||v==='text';
+  document.getElementById('text-sec').style.display=v==='text'?'':'none';
+  document.getElementById('ann-sec').style.display=v==='annotations'?'':'none';
+  document.getElementById('obj-sec').style.display=v==='objects'?'':'none';
+  document.getElementById('wire-sec').style.display=isShapes?'':'none';
+  document.getElementById('rad-sec').style.display=isShapes?'none':'';
+  document.getElementById('reveal-sec').style.display=isStroke?'':'none';
+  if(isShapes) generate();
+  if(v==='text'){ if(hersheyGlyphs) generate(); else loadHershey(); }
+}
+function pickStyle(v){ applyStyle(v); }
+function pickFont(v){ loadHershey(v); }
 function pick(el){
   const g=el.dataset.g;
   document.querySelectorAll(`[data-g="${g}"]`).forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
-  if(g==='style'){
-    state.style=el.dataset.v;
-    document.getElementById('text-sec').style.display=state.style==='text'?'':'none';
-  }
+  if(g==='style') applyStyle(el.dataset.v);
   else if(g==='cx') state.cx=+el.dataset.v;
   else if(g==='lt') state.lt=el.dataset.v;
 }
@@ -1351,6 +1805,16 @@ function setColor(el){
   document.querySelectorAll('.sw[data-color]').forEach(s=>s.classList.remove('active'));
   el.classList.add('active');
   state.color=el.dataset.color;
+}
+function toggleWireframe(el){
+  state.wireframe=!state.wireframe;
+  el.classList.toggle('active',state.wireframe);
+}
+function pickObj(el){
+  document.querySelectorAll('[data-g="obj"]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  state.obj=el.dataset.v;
+  generate();
 }
 function setBg(el){
   document.querySelectorAll('.sw[data-bg]').forEach(s=>s.classList.remove('active'));
@@ -1394,8 +1858,9 @@ function onRad(el){
   // Non-linear curve: fine control at thin end, coarser at thick
   // Min ~0.006 (3–4px diameter at default zoom) → max ~0.15 (very chunky)
   const t=el.value/100;
-  state.radius=0.006+Math.pow(t,2)*0.14;
+  state.radius=0.002+Math.pow(t,2)*0.14;
   document.getElementById('radv').textContent=state.radius.toFixed(3);
+  if(state.style==='objects'||state.style==='annotations') generate();
 }
 function onOpa(el){
   state.opacity=el.value/100;
@@ -1412,11 +1877,10 @@ function onTTSpeed(el){
 
 function exportPNG(scale){
   const ow=canvas.width,oh=canvas.height;
-  const dpr=window.devicePixelRatio||1;
-  canvas.width=canvas.clientWidth*dpr*scale;
-  canvas.height=canvas.clientHeight*dpr*scale;
-  gl.viewport(0,0,canvas.width,canvas.height);
-  mkFBO(canvas.width,canvas.height);
+  const tw=1920*scale, th=1080*scale;
+  canvas.width=tw; canvas.height=th;
+  gl.viewport(0,0,tw,th);
+  mkFBO(tw,th);
   draw();
   const url=canvas.toDataURL('image/png');
   canvas.width=ow; canvas.height=oh;
@@ -1431,7 +1895,8 @@ function exportPNG(scale){
 // ── Boot ──────────────────────────────────────────────────────────────────────
 resize();
 loop();
-loadHershey(); // start render loop immediately so canvas isn't blank
+loadHershey();
+loadAnnotationAssets();
 
 // Defer slider init: browsers restore form state asynchronously AFTER scripts
 // run, so we must override values in a subsequent task.
@@ -1442,6 +1907,229 @@ setTimeout(()=>{
   const ttspd=document.getElementById('ttspd'); ttspd.value=10; onTTSpeed(ttspd);
   generate();
 },0);
+
+// ── Stroke reveal animation ───────────────────────────────────────────────────
+const REVEAL_DURATION=4000; // ms for full reveal
+let revealRaf=null;
+let gifExporting=false;
+
+function playReveal(){
+  if(gifExporting) return;
+  if(revealRaf){ cancelAnimationFrame(revealRaf); revealRaf=null; }
+  const btn=document.getElementById('play-btn');
+  btn.textContent='◼ Stop';
+  const start=performance.now();
+  const total=idxCount;
+  // Snap to multiples of sides*6 (=216) for clean ring boundaries
+  const snap=36*6;
+  function step(now){
+    const t=Math.min((now-start)/REVEAL_DURATION,1);
+    revealCount=Math.round(total*t/snap)*snap;
+    draw();
+    if(t<1){ revealRaf=requestAnimationFrame(step); }
+    else { revealCount=-1; revealRaf=null; btn.textContent='▶ Play'; draw(); }
+  }
+  revealRaf=requestAnimationFrame(step);
+}
+
+// ── GIF export ────────────────────────────────────────────────────────────────
+let gifJsLoaded=false;
+function loadGifJs(){
+  return new Promise((res,rej)=>{
+    if(gifJsLoaded){ res(); return; }
+    const s=document.createElement('script');
+    s.src='assets/gif.js';
+    s.onload=()=>{ gifJsLoaded=true; res(); };
+    s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function exportGIF(){
+  if(gifExporting) return;
+  gifExporting=true;
+  const gifBtn=document.getElementById('gif-btn');
+  const playBtn=document.getElementById('play-btn');
+  gifBtn.disabled=true; playBtn.disabled=true;
+  gifBtn.textContent='Encoding…';
+  // Stop any live animation
+  if(revealRaf){ cancelAnimationFrame(revealRaf); revealRaf=null; }
+
+  const barWrap=document.getElementById('gif-bar-wrap');
+  const bar=document.getElementById('gif-bar');
+  const label=document.getElementById('gif-label');
+  barWrap.style.display='';
+
+  try {
+    await loadGifJs();
+  } catch(e) {
+    label.textContent='Failed to load gif.js — check internet connection';
+    gifExporting=false; gifBtn.disabled=false; playBtn.disabled=false;
+    gifBtn.textContent='↓ GIF';
+    return;
+  }
+
+  const FPS=30, DURATION=4000, HOLD=800; // ms
+  const revealFrames=Math.round(FPS*DURATION/1000);
+  const holdFrames=Math.round(FPS*HOLD/1000);
+  const totalFrames=revealFrames+holdFrames;
+  const delay=Math.round(1000/FPS);
+  const snap=36*6;
+  const total=idxCount;
+
+  // Render at fixed 1920×1080
+  const gw=1920, gh=1080;
+  const ow=canvas.width, oh=canvas.height;
+  canvas.width=gw; canvas.height=gh;
+  gl.viewport(0,0,gw,gh);
+  mkFBO(gw,gh);
+
+  // Worker source is embedded in the page — no fetch needed
+  const workerSrc=document.getElementById('gif-worker-src').textContent;
+  const workerBlob=new Blob([workerSrc],{type:'application/javascript'});
+  const workerUrl=URL.createObjectURL(workerBlob);
+
+  const gif=new GIF({
+    workers:2, quality:8,
+    width:gw, height:gh,
+    workerScript:workerUrl
+  });
+
+  // Offscreen canvas to read WebGL pixels
+  const off=document.createElement('canvas'); off.width=gw; off.height=gh;
+  const ctx=off.getContext('2d');
+
+  // Pause turntable during export
+  const savedTurntable=turntable; turntable=false;
+
+  for(let f=0;f<totalFrames;f++){
+    const t=f<revealFrames ? f/(revealFrames-1) : 1;
+    revealCount=Math.round(total*t/snap)*snap;
+    draw();
+    ctx.drawImage(canvas,0,0,gw,gh,0,0,gw,gh);
+    gif.addFrame(ctx,{copy:true,delay});
+    bar.style.width=(f/totalFrames*60)+'%';
+    label.textContent=`Rendering frame ${f+1}/${totalFrames}…`;
+    await new Promise(r=>setTimeout(r,0)); // yield to browser
+  }
+
+  // Restore canvas to original display size
+  canvas.width=ow; canvas.height=oh;
+  gl.viewport(0,0,ow,oh);
+  mkFBO(ow,oh);
+  revealCount=-1; turntable=savedTurntable; draw();
+
+  gif.on('progress',p=>{
+    bar.style.width=(60+p*40)+'%';
+    label.textContent=`Encoding… ${Math.round(p*100)}%`;
+  });
+  gif.on('finished',blob=>{
+    URL.revokeObjectURL(workerUrl);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`gs-reveal-${Date.now()}.gif`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    barWrap.style.display='none';
+    bar.style.width='0%';
+    gifExporting=false;
+    gifBtn.disabled=false; playBtn.disabled=false;
+    gifBtn.textContent='↓ GIF';
+    playBtn.textContent='▶ Play';
+  });
+  gif.render();
+}
+
+let panGifExporting=false;
+async function exportPanGIF(){
+  if(panGifExporting||gifExporting) return;
+  panGifExporting=true;
+  const btn=document.getElementById('pan-gif-btn');
+  const gifBtn=document.getElementById('gif-btn');
+  const playBtn=document.getElementById('play-btn');
+  btn.disabled=true; gifBtn.disabled=true; playBtn.disabled=true;
+  btn.textContent='Encoding…';
+
+  const barWrap=document.getElementById('gif-bar-wrap');
+  const bar=document.getElementById('gif-bar');
+  const label=document.getElementById('gif-label');
+  barWrap.style.display='';
+
+  try { await loadGifJs(); }
+  catch(e){
+    label.textContent='Failed to load gif.js';
+    panGifExporting=false;
+    btn.disabled=false; gifBtn.disabled=false; playBtn.disabled=false;
+    btn.textContent='↓ Pan GIF'; return;
+  }
+
+  // Pan parameters
+  const FPS=30, DURATION=4000; // ms — one full orbit cycle
+  const totalFrames=Math.round(FPS*DURATION/1000);
+  const delay=Math.round(1000/FPS);
+  const MAX_ANGLE=0.04; // radians (~2.3°) — very subtle circular drift
+
+  const gw=1920, gh=1080;
+  const ow=canvas.width, oh=canvas.height;
+  canvas.width=gw; canvas.height=gh;
+  gl.viewport(0,0,gw,gh);
+  mkFBO(gw,gh);
+
+  const workerSrc=document.getElementById('gif-worker-src').textContent;
+  const workerBlob=new Blob([workerSrc],{type:'application/javascript'});
+  const workerUrl=URL.createObjectURL(workerBlob);
+
+  const gif=new GIF({ workers:2, quality:8, width:gw, height:gh, workerScript:workerUrl });
+
+  const off=document.createElement('canvas'); off.width=gw; off.height=gh;
+  const ctx=off.getContext('2d');
+
+  // Save state
+  const savedTurntable=turntable; turntable=false;
+  const savedModelMat=modelMat.slice();
+  revealCount=-1; // fully revealed
+
+  for(let f=0;f<totalFrames;f++){
+    // Sine wave: starts at 0, swings right, returns to 0, swings left, returns — one full period
+    const phase=(f/totalFrames)*Math.PI*2;
+    const angleY=MAX_ANGLE*Math.sin(phase);
+    const angleX=MAX_ANGLE*0.6*Math.cos(phase); // shallower vertical arc
+    modelMat=m4mul(m4rotX(angleX),m4mul(m4rotY(angleY),savedModelMat));
+    draw();
+    ctx.clearRect(0,0,gw,gh);
+    ctx.drawImage(canvas,0,0,gw,gh,0,0,gw,gh);
+    gif.addFrame(ctx,{copy:true,delay});
+    bar.style.width=(f/totalFrames*60)+'%';
+    label.textContent=`Rendering frame ${f+1}/${totalFrames}…`;
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  // Restore
+  modelMat=savedModelMat;
+  canvas.width=ow; canvas.height=oh;
+  gl.viewport(0,0,ow,oh);
+  mkFBO(ow,oh);
+  turntable=savedTurntable;
+  draw();
+
+  gif.on('progress',p=>{
+    bar.style.width=(60+p*40)+'%';
+    label.textContent=`Encoding… ${Math.round(p*100)}%`;
+  });
+  gif.on('finished',blob=>{
+    URL.revokeObjectURL(workerUrl);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download=`gs-pan-${Date.now()}.gif`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    barWrap.style.display='none';
+    bar.style.width='0%';
+    panGifExporting=false;
+    btn.disabled=false; gifBtn.disabled=false; playBtn.disabled=false;
+    btn.textContent='↓ Pan GIF';
+    playBtn.textContent='▶ Play';
+  });
+  gif.render();
+}
 </script>
 </body>
 </html>
