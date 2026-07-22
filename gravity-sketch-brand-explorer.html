@@ -447,12 +447,12 @@
       <div class="section">
         <div class="section-label">Background</div>
         <div class="swatch-grid">
-          <div class="swatch active" data-bg="#FFC72C" style="background:#FFC72C" title="Yellow" onclick="setBg(this)"></div>
+          <div class="swatch" data-bg="#FFC72C" style="background:#FFC72C" title="Yellow" onclick="setBg(this)"></div>
           <div class="swatch" data-bg="#6B47DC" style="background:#6B47DC" title="Purple" onclick="setBg(this)"></div>
           <div class="swatch" data-bg="#92F5B5" style="background:#92F5B5" title="Mint" onclick="setBg(this)"></div>
           <div class="swatch" data-bg="#FFFFFF" style="background:#FFFFFF" title="White" onclick="setBg(this)"></div>
           <div class="swatch" data-bg="#000000" style="background:#000000" title="Black" onclick="setBg(this)"></div>
-          <div class="swatch" data-bg="#F2F2F2" style="background:#F2F2F2" title="Light grey" onclick="setBg(this)"></div>
+          <div class="swatch active" data-bg="#F2F2F2" style="background:#F2F2F2" title="Light grey" onclick="setBg(this)"></div>
         </div>
       </div>
 
@@ -474,10 +474,10 @@
       <div class="section" id="sec-3d-color" style="display:block">
         <div class="section-label">3D Colour</div>
         <div class="s3-swatch-row" id="s3-swatches">
-          <div class="s3-swatch active" data-s3color="green"  style="background:radial-gradient(ellipse at 40% 38%,#92F5B5 0%,#92F5B5 44%,#4da870 72%,#1a4028 100%)" onclick="s3pickColor(this,'green')"></div>
+          <div class="s3-swatch"        data-s3color="green"  style="background:radial-gradient(ellipse at 40% 38%,#92F5B5 0%,#92F5B5 44%,#4da870 72%,#1a4028 100%)" onclick="s3pickColor(this,'green')"></div>
           <div class="s3-swatch"        data-s3color="gold"   style="background:radial-gradient(ellipse at 40% 38%,#FFBC3A 0%,#FFBC3A 44%,#cc8800 72%,#523300 100%)" onclick="s3pickColor(this,'gold')"></div>
           <div class="s3-swatch"        data-s3color="pink"   style="background:radial-gradient(ellipse at 40% 38%,#FA5050 0%,#FA5050 44%,#c01010 72%,#400000 100%)" onclick="s3pickColor(this,'pink')"></div>
-          <div class="s3-swatch"        data-s3color="purple" style="background:radial-gradient(ellipse at 40% 38%,#6530F7 0%,#6530F7 44%,#3a0fb8 72%,#10043a 100%)" onclick="s3pickColor(this,'purple')"></div>
+          <div class="s3-swatch active" data-s3color="purple" style="background:radial-gradient(ellipse at 40% 38%,#6530F7 0%,#6530F7 44%,#3a0fb8 72%,#10043a 100%)" onclick="s3pickColor(this,'purple')"></div>
           <div class="s3-swatch"        data-s3color="white"  style="background:radial-gradient(ellipse at 40% 38%,#f0f0f0 0%,#f0f0f0 44%,#aaa 72%,#555 100%)" onclick="s3pickColor(this,'white')"></div>
         </div>
       </div>
@@ -642,7 +642,7 @@
 
 // ─── BRAND EXPLORER STATE ─────────────────────────────────────────────────────
 const state = {
-  bg: '#FFC72C',
+  bg: '#F2F2F2',
   format: 'landscape-16-9',
   logoVisible: true,
   logoVersion: 'colour',
@@ -1609,7 +1609,7 @@ const s3canvas = document.getElementById('stroke3d');
 const s3gl = s3canvas.getContext('webgl', {antialias:true, preserveDrawingBuffer:true, alpha:true});
 
 // State exposed for external wiring
-const s3State = { style:'organic', color:'green', cx:2, lt:'studio', radius:0.022, opacity:1.0, titleText:'' };
+const s3State = { style:'organic', color:'purple', cx:2, lt:'studio', radius:0.022, opacity:1.0, titleText:'' };
 
 let s3ModelMat = m4mul(m4rotY(-0.4), m4rotX(0.18));
 const s3orbit  = { dist:2.8 };
